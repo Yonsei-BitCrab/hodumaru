@@ -8,7 +8,9 @@ module soma (	clk, rst, kill,
 				out_spike);
   
 // Neuron Inputs Declaration
-input wire weight, clk, in_spike;
+input wire clk;
+input wire [7:0] in_spike; //in
+input wire [7:0] weight; //TODO:
 
 // Neuron parameter data to be Initialized
 input wire [7:0] vrest;
@@ -16,6 +18,7 @@ input wire [7:0] vth;
 input wire [7:0] vlk;
 input wire [7:0] r_time;
 input wire [7:0] a_delay;
+
 //Neuron Outputs Declaration
 
 wire w_suspend;
@@ -23,8 +26,8 @@ output suspend;
 output out_spike;
 
 // Spike Time
-reg[7:0] _spike;
-reg[7:0] _spike2Accumulate;
+integer _spike;
+integer _spike2Accumulate;
 
   
 // Neuron Constants
@@ -62,7 +65,7 @@ always @(posedge clk or negedge rst) begin
 				if (kill == 1'b1) begin
 					next_state_reg <= DEACTIVE; 
 				end
-				else if (_is_REF == 1'b1) begin
+				else if (_is_REF) begin
 					next_state_reg <= REFRATORY;
 				end
 				else begin
@@ -81,11 +84,11 @@ always @(posedge clk or negedge rst) begin
 end
 
 
-
 // Neuron Dynamics
 always @(posedge clk or negedge rst) begin 
 	if (!rst) begin
 		_vrest <= vrest;
+		_V_potential <= vrest;
 		_vth <= vth;
 		_r_time <= r_time;
 		_a_delay <= a_delay;
@@ -93,33 +96,31 @@ always @(posedge clk or negedge rst) begin
 	end
 
 	if (state_reg == ACTIVE) begin
-		_V_potential = _V_potential + weight - _vlk; // TODO: (LIF equation)  //TODO: int() wrap!
+		_V_potential <= _V_potential + weight - _vlk; // TODO: (LLIF equation)  //TODO: int() wrap!
 
 		if (_V_potential >= _vth) begin //fire out_spike
-			_V_potential = _vrest;
-			_spike = in_spike + _a_delay;
-			_is_REF = 1'b0;
+			_V_potential <= _vrest;
+			_spike <= in_spike + _a_delay;
+			_is_REF <= 1'b1;
+			
 			
 		end
 
 		if (_V_potential < _vrest) begin //return to V_rest
-			~~~; //TODO:
+			_V_potential <= _vrest;
 		end
 
 	end
     
 	else if (state_reg == REFRATORY) begin
-		_spike2Accumulate = _spike2Accumulate + in_spike;	//TODO: int() wrap!
+		_spike2Accumulate <= _spike2Accumulate + in_spike;	//TODO: int() wrap!
 		if (_spike2Accumulate > _r_time) begin
-			_is_REF = 1'b0;
+			_is_REF <= 1'b0;
 			w_suspend <= 1'b1;		//TODO: grammar check needed
 		end
-
-		_is_REF <= 1'b0;
-	begin
-
 	end
 end
+
 assign suspend = w_suspend;
 assign output_spike = _spike;
 

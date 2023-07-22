@@ -11,7 +11,7 @@ module synapse(clk, rst, kill,
 input wire [7:0] weight; //TODO:
 input clk, rst, kill;
 input [6:0] Neuron_number;
-input [15:0][127:0] hash_table_input;
+input [15:0] hash_table_input;
 
 reg _weight_number;
 reg [16:0] _hash_table;

@@ -37,6 +37,8 @@ reg[7:0] _V_th;
 reg[7:0] _refr_time;
 reg[7:0] _axon_delay;
 reg[7:0] _V_leak;
+reg[7:0] _in_spike;
+
 integer _V_potential;			//TODO: change w/ fixed point library
 integer tau;
 
@@ -96,19 +98,20 @@ end
 // Neuron Dynamics
 always @(posedge clk or negedge rst) begin 
 	if (!rst) begin
-		//_V_rest <= V_rest;
 		_V_potential <= V_rest;
 		_V_th <= V_th;
 		_refr_time <= refr_time;
 		_axon_delay <= axon_delay;
 		_V_leak <= V_leak;
+		_spikeDelaySum <= 0;
+		_in_spike <= in_spike;
 	end
 
 	else if (state_reg == ACTIVE) begin
 		//_V_potential <= _V_potential + weight - in_spike *_V_leak; // TODO: (LLIF equation)
 
 		//_V_potential <= _V_potential + del_t / time_constant ( _V_rest - _V_potential + weight )
-		_V_potential <= _V_potential * (1-e**(in_spike/tau)) + weight; //TODO: LIF, e quatization sub
+		_V_potential <= _V_potential * (1-e**(_in_spike/tau)) + weight; //TODO: LIF, e quatization sub
 
 
 		if (_V_potential >= _V_th) begin //fire out_spike
@@ -126,6 +129,7 @@ always @(posedge clk or negedge rst) begin
 			_is_REF <= 1'b0;
 			_wait <= 1'b1;		//TODO: grammar check needed
 		end
+		
 		else begin
 			_is_REF <= 1'b1;
 			_wait <= 1'b0;

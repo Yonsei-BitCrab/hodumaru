@@ -90,7 +90,7 @@ always @(posedge clk or negedge rst) begin
 	end
 end
 
-
+// Hi
 // Neuron Dynamics
 always @(posedge clk or negedge rst) begin 
 	if (!rst) begin

@@ -96,7 +96,7 @@ end
 // Neuron Dynamics
 always @(posedge clk or negedge rst) begin 
 	if (!rst) begin
-		_V_rest <= V_rest;
+		//_V_rest <= V_rest;
 		_V_potential <= V_rest;
 		_V_th <= V_th;
 		_refr_time <= refr_time;
@@ -105,22 +105,16 @@ always @(posedge clk or negedge rst) begin
 	end
 
 	else if (state_reg == ACTIVE) begin
-		_V_potential <= _V_potential + weight - in_spike *_V_leak; // TODO: (LLIF equation)
+		//_V_potential <= _V_potential + weight - in_spike *_V_leak; // TODO: (LLIF equation)
 
 		//_V_potential <= _V_potential + del_t / time_constant ( _V_rest - _V_potential + weight )
-		_V_potential <= _V_potential * (1-e**(in_spike/tau)); //TODO: LIF, e quatization sub
+		_V_potential <= _V_potential * (1-e**(in_spike/tau)) + weight; //TODO: LIF, e quatization sub
 
 
 		if (_V_potential >= _V_th) begin //fire out_spike
 			_V_potential <= _V_rest;
 			_spike <= in_spike + _axon_delay;
 			_is_REF <= 1'b1;
-			
-			
-		end
-
-		else if (_V_potential < _V_rest) begin //return to V_rest
-			_V_potential <= _V_rest;
 		end
 
 	end

@@ -1,46 +1,46 @@
-module synapse(clk, rst, kill,
-               weight,
-               Neuron_number,
 
+module synapse( clk, rst, kill,
+                weight,
+                neuron_number,
+                W_EN, R_EN
 
                         );
 
 
  // synapse Inputs Declaration
 
-input wire [7:0] weight; //TODO:
-input clk, rst, kill;
-input [6:0] Neuron_number;
-input [15:0] hash_table_input;
+input [7:0] weight; //TODO:
+input clk, rst, kill, EN;
+input [7:0] neuron_number;
 
-reg _weight_number;
+reg _neuron_number;
+reg _weigh;
 reg [16:0] _hash_table;
 
-
-always @(AXI_weight) begin
-    
-end
 
 
 always @(posedge clk or negedge rst) begin 
 	if (!rst) begin // init : #table 저장
-		_weight# <= 
-
-        
+		
 	end
 
-
-    else if(axi) begin //#참고 -> Neuron 보내기
-
-    //if input_Neuron_Number && Hash_table[15:9];
-    _out_weight <= Hast_table[8:0];
+    else if (kill == 1'b1) begin //table data 뺴라
+    
     end
 
-    
 
-    else if(STDP) begin
-    //input_Neuron_Number == Hash_table[15:9];
-    Hast_table[8:0] <= weight;    
+    else begin
+
+        if(R_EN == 1'b1 && W_EN ==1'b0 ) begin //#참고 -> Neuron 보내기
+
+            //if input_Neuron_Number && Hash_table[15:9];
+            _out_weight <= hast_table(_neuron_number); //TODO:
+        end
+
+        else if(R_EN == 1'b0 && W_EN ==1'b1 ) begin //STDP writing
+            //input_Neuron_Number == Hash_table[15:9];
+            Hast_table[8:0] <= weight;    
+        end
 
     end
 
@@ -48,10 +48,23 @@ assign out_weight = _out_weight;
 
 end
 
-
 endmodule
 
 
+// Table Module for Neuron Number
+
+// module NeuronNumberTable();
+
+// input [7:0] Neuron_number;
+// output [] weight;
+
+// always @(Neuron_number) begin
+//     case(Neuron_number)
+//         7'b0000000: 0;
+//         7'b0000001: 0
+
+//         ...
+//         7'b1111111: 0;
 
 
-
+// end

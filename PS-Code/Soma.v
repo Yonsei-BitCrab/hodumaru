@@ -38,6 +38,7 @@ reg[7:0] _refr_time;
 reg[7:0] _axon_delay;
 reg[7:0] _V_leak;
 integer _V_potential;			//TODO: change w/ fixed point library
+integer tau;
 
 
 reg _is_REF;
@@ -90,7 +91,8 @@ always @(posedge clk or negedge rst) begin
 	end
 end
 
-// Hi
+
+
 // Neuron Dynamics
 always @(posedge clk or negedge rst) begin 
 	if (!rst) begin
@@ -106,6 +108,8 @@ always @(posedge clk or negedge rst) begin
 		_V_potential <= _V_potential + weight - in_spike *_V_leak; // TODO: (LLIF equation)
 
 		//_V_potential <= _V_potential + del_t / time_constant ( _V_rest - _V_potential + weight )
+		_V_potential <= _V_potential * (1-e**(in_spike/tau)); //TODO: LIF, e quatization sub
+
 
 		if (_V_potential >= _V_th) begin //fire out_spike
 			_V_potential <= _V_rest;

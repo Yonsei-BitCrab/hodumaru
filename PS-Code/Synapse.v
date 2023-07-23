@@ -2,19 +2,23 @@
 module synapse( clk, rst, kill,
                 weight,
                 neuron_number,
-                W_EN, R_EN
-
+                W_EN, R_EN,
+                out_weight
                         );
 
 
- // synapse Inputs Declaration
+ // synapse Inputs Declaration 
 
 input [7:0] weight; //TODO:
-input clk, rst, kill, EN;
+input clk, rst, kill;
 input [7:0] neuron_number;
+input W_EN, R_EN;
+
+output out_weight;
 
 reg _neuron_number;
-reg _weigh;
+reg _weight;
+reg _out_weight;
 reg [16:0] _hash_table;
 
 

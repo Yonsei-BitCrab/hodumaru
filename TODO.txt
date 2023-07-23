@@ -1,3 +1,109 @@
 TODO:
 
 STDP
+
+
+
+
+
+AXI -> PN
+#Neuron(2^7)    :8  bits        |       iADDR protocol
+internal ADDR   :16 bits        ->      15          spike:0     /param:1
+W_EN            :1  bit         |       [14:13]                 /update:00   /synpase:01 /soma:10    /STDP:11 
+W_DATA          :8  bits        |       12          RichClub:1  /Ordinary:0
+R_EN            :1  bit         |       11
+kill            :1  bit         |       10
+                                |       9
+                                |       8
+                                |       7
+                                |       [6:0]       ADDR
+                                |
+
+
+PN -> AXI
+W_Response      :8  bits
+wait            :1  bit
+
+
+pseudo code
+1. Initializing Process
+
+    1) AXI -> PN / [7:0]#N(to N번째뉴런), [15:0]iADDR, [31:0]W_DATA, W_EN
+        (1)ADDR decoder ( iADDR[15] = 1  : only param )
+            a. iADDR을 통해 어디로 갈지 결정 ([14:13]참고해서)
+            b. ADDR, W_Data, W_EN 가지고 하위 모듈로
+
+        (2)synpase [14:13] = 2'b01
+            a. ADDR : 해당 target 뉴런 앞에 연결되어 있는 word adress of Neuron (by connectivity map)
+            b. W_DATA : 한 층에 대한 [31:0]weight(4Byte = 1B * 4 neurons)
+            c. RAM에 ADDR -> Addr / W_EN -> W_EN / W_DATA -> data
+        
+        (3)SOMA [14:13] = 2'b10
+            SOMA INTERVAL DECODER -> iADDR[15] : spike인지 param인지 판단 (왜냐하면 SOMA는 spike와 param 모두 받을 수 있음)
+            a. //ADDR : 어떤 PARAM인지    => 필요없음(한 array가 4B이고 1B*4params)
+            b. W_DATA : PARAM value     ex) V_th, V_leak, ref_t, axon_delay
+            c. //DECODER(in SOMA)이 ADDR을 통해 어떤 PARAM인지 DECODE
+            d. 해당 PARAM을 FF에 저장
+
+        (4)STDP [14:13] = 2'b11
+            STDP INTERVAL DECODER -> iADDR[15] : spike인지 param인지 판단 (왜냐하면 STDP는 spike와 param 모두 받을 수 있음)
+            a. ADDR : curve stack 주소  (quantization)
+            b. W_DATA : STDP curve      (quantization)
+            c. RAM에 ADDR -> Addr / W_EN -> W_EN / W_DATA -> data //init write
+        
+2. spike
+
+    1) AXI -> PN / iADDR(#N(1or2)(from N번째뉴런)), [31:0]W_DATA, W_EN
+        (1)ADDR decoder (iADDR[15] = 0 : spike interval)
+            a. ADDR  in iADDR   (#N)       -> iADDR to synpase & SOMA(param인지 spike인지 구분하는 ADDR) & STDP
+            b. W_DATA[15:0]   (spike interval)   -> SOMA & STDP
+            c. iADDR[12] => richClub/not -> Synapse, SOMA는
+            d. ADDR of #N(1or2) => 0인지 판단해서 0이면 전달안하고 0이 아니면 #N 전달함 ->개수도 전달(1이면 2개, 0이면 1개)
+
+        
+        (2)synapse
+            a. ADDR : pre spike fired #N
+            b. R_EN from 'ADDR decoder' or 'decoder in synapse'
+            c. RAM에서 ADDR(pre #N) + R_EN -> weight -> [7:0]SOMA //spike read (만약 두개면 wait걸고, 2번에 걸쳐서 처리)
+
+        (3)SOMA
+            SOMA INTERVAL DECODER -> iADDR[15] : spike인지 param인지 판단 (왜냐하면 SOMA는 spike와 param 모두 받을 수 있음)
+            a. W_DATA : spike interval
+            b. synapse에서 온 weight + W_DATA를 연산
+                b-1. SOMA 연산 결과 < V_th
+                    행동 없음
+                b-2. SOMA 연산 결과 > V_th
+                    post spike generation
+                    REFRATORY로 상태 전환 -> spike interval 무시
+            
+        (4)STDP
+            STDP INTERVAL DECODER -> iADDR[15] : spike인지 param인지 판단 (왜냐하면 STDP는 spike와 param 모두 받을 수 있음)
+            a. Pre_spike interval 등록 (iADDR[12]=1이면 한개만 처리(RichClub이니까) <-> iADDR[12]=0이면 두개 처리)
+            b. Post_spike interval 등록 -> TDC로 전달
+            c. TDC : time difference 계산 -> LUT로 전달
+            d. LUT : diff 넣고 updated weight 뽑아냄
+            e. iADDR -> 연결된 #N / W_DATA -> weight 포함해서 'ADDR decoder'로 보냄(update시그널 따로 둬서 Synapse->Soma로 weight넘어가는거 차단, RAM에 쓸 수 있도록 만들음)
+
+        //(5)STDP update
+        //    a. ADDR decoder에서 spike/Init([14:13]==2'b01) or updated ([14:13]==2'b00) 인지 판단 후, 2'b00보고 W_EN 생성, STDP로부터 받은 iADDR & W_DATA를 synapse로 보냄
+        //    b. ADDR : update되어야 할 #N
+        //    c. W_DATA : updated할 weight
+        //    d. W_EN : W_EN //updated write
+k
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+decoder -> [14:13] 주소 보고  보내줌
+
+

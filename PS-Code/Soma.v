@@ -32,7 +32,7 @@
 
 	
 	// Neuron Constants
-	reg[7:0] _V_rest;
+	reg[7:0] _V_rest; //뺼것
 	reg[7:0] _V_th;
 	reg[7:0] _refr_time;
 	reg[7:0] _axon_delay;
@@ -109,7 +109,9 @@
 			_in_spike <= in_spike;
 		end
 
-		else if (state_reg == ACTIVE) begin
+		else begin
+
+		if (state_reg == ACTIVE) begin
 			//_V_potential <= _V_potential + weight - in_spike *_V_leak; // TODO: (LLIF equation)
 
 			//_V_potential <= _V_potential + del_t / time_constant ( _V_rest - _V_potential + weight )
@@ -122,6 +124,15 @@
 				_spike <= in_spike + _axon_delay;
 				_is_REF <= 1'b1;
 			end
+
+			else begin
+			_V_potential <= _V_potential;
+			_V_th <= _V_th;
+			_refr_time <= _refr_time;
+			_axon_delay <= _axon_delay;
+			_V_leak <= _V_leak;
+			end
+			
 
 		end
 		
@@ -136,6 +147,13 @@
 			else begin
 				_is_REF <= 1'b1;
 				_wait <= 1'b0;
+			
+
+			_V_potential <= _V_potential;
+			_V_th <= _V_th;
+			_refr_time <= _refr_time;
+			_axon_delay <= _axon_delay;
+			_V_leak <= _V_leak;
 			end
 
 		end
@@ -144,9 +162,15 @@
 			_wait <= 1'b0;
 			_is_REF <= 1'b0;
 			_spikeDelaySum <= 0;
+
+			_V_potential <= _V_potential;
+			_V_th <= _V_th;
+			_refr_time <= _refr_time;
+			_axon_delay <= _axon_delay;
+			_V_leak <= _V_leak;
 		end
 	end
-
+	end
 	assign o_wait = _wait;
 	assign output_spike = _spike;
 

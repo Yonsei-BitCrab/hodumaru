@@ -44,12 +44,12 @@ always @(posedge clk or negedge rst) begin
 
 
     else begin
+        //Address decoding
+        _base <= _iAddr / 4;
+         _remains <= _iAddr % 4;
 
-        if(R_EN == 1'b1 && W_EN ==1'b0 ) begin //#참고 -> Neuron 보내기
-            //Address decoding
-            _base <= _iAddr / 4;
-            _remains <= _iAddr % 4;
-
+        if(R_EN == 1'b1 && W_EN ==1'b0 ) begin
+            
             //Read
             if (_remains ==2'b00)begin
             weight_out <= _Weight_table[_base][7:0]; //TODO: 접근방법
@@ -70,10 +70,26 @@ always @(posedge clk or negedge rst) begin
 
 
         
-        // else if(R_EN == 1'b0 && W_EN ==1'b1 ) begin //STDP writing
-        //     //input_Neuron_Number == Hash_table[15:9];
-        //     Weight_table[8:0] <= weight;    
-        // end
+        else if(R_EN == 1'b0 && W_EN ==1'b1 ) begin
+            //STDP writing
+            // _W_DATA slicing needed into 1B like below...
+            if (_remains ==2'b00)begin
+            _Weight_table[_base][] <= _W_DATA[]; //TODO: 접근방법
+            end
+
+            else if(_remains ==2'b01)begin
+            _Weight_table[_base][] <= _W_DATA[]; //TODO: 접근방법
+            end
+
+            else if(_remains ==2'b10)begin
+           _Weight_table[_base][23:16] <= _W_DATA[]; //TODO: 접근방법
+            end
+            
+            else begin
+            _Weight_table[_base][31:24] <= _W_DATA[]; //TODO: 접근방법
+            end
+            
+        end
 
         else begin
         end

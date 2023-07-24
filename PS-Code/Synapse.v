@@ -1,74 +1,71 @@
-
+// TODO: timing analysis whether input should be sliced in decoder or in the synapse module!
 module synapse( clk, rst, kill,
-                weight,
-                neuron_number,
+                iADDR, W_DATA,
                 W_EN, R_EN,
-                out_weight
+                weight_out
                         );
 
 
  // synapse Inputs Declaration 
 
-input [7:0] weight; //TODO:
 input clk, rst, kill;
-input [7:0] neuron_number;
+input [15:0] iADDR;
+input [31:0] W_DATA; 
 input W_EN, R_EN;
 
-output out_weight;
+output reg [7:0] weight_out;
 
-reg _neuron_number;
-reg _weight;
-reg _out_weight;
-reg [16:0] _hash_table;
+reg [15:0] _iADDR;
+reg [31:0] _W_DATA;
+reg [7:0] _iAddr;
+reg [31:0] _Weight_table [0:31] ; //memory
+reg [31:0] _weight_out32;
+reg _count = 0;
+//reg [7:0] _weight_out;
+reg [4:0] _base;
+reg [1:0]_remains;
 
 
 
 always @(posedge clk or negedge rst) begin 
 	if (!rst) begin // init : #table 저장
-		
+        if (W_EN == 1'b1) begin
+		_count <= _count + 1;
+        _Weight_table[_count] <= _W_DATA;
+        end
+
+        else begin
+            _count <= 0;
+        end
 	end
 
-    else if (kill == 1'b1) begin //table data 뺴라
-    
-    end
+    // else if (kill == 1'b1) begin //table data 뺴라
+    //     _count <= 0;
+    // end
 
 
     else begin
 
         if(R_EN == 1'b1 && W_EN ==1'b0 ) begin //#참고 -> Neuron 보내기
-
-            //if input_Neuron_Number && Hash_table[15:9];
-            _out_weight <= hast_table(_neuron_number); //TODO:
+            //Address decoding
+            _base <= _iAddr / 4;
+            _remains <= _iAddr % 4;
+            
+            _weight_out32 <= _Weight_table[_base]; //TODO: 접근방법
+            weight_out <= _weight_out32[:];
         end
 
-        else if(R_EN == 1'b0 && W_EN ==1'b1 ) begin //STDP writing
-            //input_Neuron_Number == Hash_table[15:9];
-            Hast_table[8:0] <= weight;    
-        end
+
+
+        // else if(R_EN == 1'b0 && W_EN ==1'b1 ) begin //STDP writing
+        //     //input_Neuron_Number == Hash_table[15:9];
+        //     Weight_table[8:0] <= weight;    
+        // end
 
     end
 
-assign out_weight = _out_weight;
+// assign weight_out = _weight_out;
 
 end
 
 endmodule
-
-
-// Table Module for Neuron Number
-
-// module NeuronNumberTable();
-
-// input [7:0] Neuron_number;
-// output [] weight;
-
-// always @(Neuron_number) begin
-//     case(Neuron_number)
-//         7'b0000000: 0;
-//         7'b0000001: 0
-
-//         ...
-//         7'b1111111: 0;
-
-
-// end

@@ -1,7 +1,7 @@
 	// soma module in physical neuron
 
 	module soma (	clk, rst, kill,
-					V_th, V_leak, refr_time, axon_delay, // TODO: shorten to W_DATA(32bit)
+					W_DATA,
 					weight,
 					in_spike, 
 					o_wait,
@@ -14,11 +14,8 @@
 	input rst, kill;
 
 	// Neuron parameter data to be Initialized
-	input wire [7:0] V_th;
-	input wire [7:0] V_leak;
-	input wire [7:0] refr_time;
-	input wire [7:0] axon_delay;
-
+	input [31:0] W_DATA;
+	
 	//Neuron Outputs Declaration
 
 	reg _wait;
@@ -99,10 +96,10 @@
 	always @(posedge clk or negedge rst) begin 
 		if (!rst) begin
 			_V_potential <= 0;
-			_V_th <= V_th;
-			_refr_time <= refr_time;
-			_axon_delay <= axon_delay;
-			_V_leak <= V_leak;
+			_V_th <= W_DATA[];
+			_refr_time <= W_DATA[];
+			_axon_delay <= W_DATA[];
+			_V_leak <= W_DATA[];
 			_spikeDelaySum <= 0;
 			_in_spike <= in_spike;
 		end
@@ -145,13 +142,11 @@
 			else begin
 				_is_REF <= 1'b1;
 				_wait <= 1'b0;
-			
-
-			_V_potential <= _V_potential;
-			_V_th <= _V_th;
-			_refr_time <= _refr_time;
-			_axon_delay <= _axon_delay;
-			_V_leak <= _V_leak;
+				_V_potential <= _V_potential;
+				_V_th <= _V_th;
+				_refr_time <= _refr_time;
+				_axon_delay <= _axon_delay;
+				_V_leak <= _V_leak;
 			end
 
 		end

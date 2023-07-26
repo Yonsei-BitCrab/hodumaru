@@ -14,12 +14,15 @@ input [15:0] iADDR; //줄일 수도 있음
 input [31:0] W_DATA; 
 input W_EN, R_EN;
 
-output reg [7:0] _weight_out;
+// TODO: tomorrow 16bit change with random generator
+output reg [15:0] _weight_out;
 
 reg [15:0] _iADDR;
 //reg [31:0] _W_DATA;
 reg [6:0] _iAddr;
 reg [31:0] _Weight_table [0:31]; //memory
+reg [7:0] _RC_table [];
+
 reg _count = 0;
 //reg [7:0] __weight_out;
 reg [4:0] _base; //TODO: int wrap;
@@ -29,13 +32,17 @@ reg [1:0]_remains;
 always @(posedge clk or negedge rst) begin 
 
 	if (!rst) begin // init : #table 저장
-        if (W_EN == 1'b1) begin
-        _Weight_table[_count] <= W_DATA;
-        _count <= _count + 1;
+        if (W_EN == 1'b1 && R_EN == 1'b0 ) begin
+            _Weight_table[_count] <= W_DATA;
+            _count <= _count + 1;
+        end
+
+        else if (W_EN == 1'b1 && R_EN == 1'b1 ) begin
+            _RC_table[] <= W_DATA;
         end
 
         else begin
-            _count <= 0;
+            _count <= _count; // or <= 0?
         end
 	end
 
@@ -74,7 +81,6 @@ always @(posedge clk or negedge rst) begin
         //STDP writing
         else if(R_EN == 1'b0 && W_EN ==1'b1 ) begin
             
-            // _W_DATA slicing needed into 1B like below...
             if (_remains ==2'b00)begin
             _Weight_table[_base][7:0] <= W_DATA[7:0]; //TODO: 접근방법
             end
@@ -91,6 +97,11 @@ always @(posedge clk or negedge rst) begin
             _Weight_table[_base][31:24] <= W_DATA[7:0]; //TODO: 접근방법
             end
             
+        //Rich Club    
+        else if (R_EN == 1'b1 && W_EN == 1'b1) begin
+            
+        end
+
         end
 
         else begin

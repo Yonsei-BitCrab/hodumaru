@@ -1,7 +1,7 @@
 	// soma module in physical neuron
 
 	module soma (	clk, rst, kill,
-					V_rest, V_th, V_leak, refr_time, axon_delay, 
+					V_th, V_leak, refr_time, axon_delay, // TODO: shorten to W_DATA(32bit)
 					weight,
 					in_spike, 
 					o_wait,
@@ -14,7 +14,6 @@
 	input rst, kill;
 
 	// Neuron parameter data to be Initialized
-	input wire [7:0] V_rest;
 	input wire [7:0] V_th;
 	input wire [7:0] V_leak;
 	input wire [7:0] refr_time;
@@ -32,7 +31,6 @@
 
 	
 	// Neuron Constants
-	reg[7:0] _V_rest; //뺼것
 	reg[7:0] _V_th;
 	reg[7:0] _refr_time;
 	reg[7:0] _axon_delay;
@@ -100,7 +98,7 @@
 	// Neuron Dynamics
 	always @(posedge clk or negedge rst) begin 
 		if (!rst) begin
-			_V_potential <= V_rest;
+			_V_potential <= 0;
 			_V_th <= V_th;
 			_refr_time <= refr_time;
 			_axon_delay <= axon_delay;
@@ -120,7 +118,7 @@
 
 
 			if (_V_potential >= _V_th) begin //fire out_spike
-				_V_potential <= _V_rest;
+				_V_potential <= 0;
 				_spike <= in_spike + _axon_delay;
 				_is_REF <= 1'b1;
 			end

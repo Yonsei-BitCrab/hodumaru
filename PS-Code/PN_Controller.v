@@ -62,8 +62,8 @@ always @(posedge clk or negedge rst) begin
             begin
                 to_SOMA_DATA <= W_DATA;
 
-                W_EN2Synapse <= 1'b1;
-                W_EN2SOMA <= 1'b0;
+                W_EN2Synapse <= 1'b0;
+                W_EN2SOMA <= 1'b1;
                 W_EN2STDP <= 1'b0;
                 R_EN2Synapse <= 1'b0;
                 R_EN2SOMA <= 1'b0;

@@ -89,7 +89,7 @@ pseudo code
         //    b. ADDR : update되어야 할 #N
         //    c. W_DATA : updated할 weight
         //    d. W_EN : W_EN //updated write
-k
+
 
 
 

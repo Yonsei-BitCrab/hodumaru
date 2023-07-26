@@ -7,16 +7,17 @@ STDP
 
 
 AXI -> PN
-#PN(2^7)        :8  bits        |       iADDR protocol
+#PN(2^7)        :8  bits        |       iADDR protocol => AXI to PN Controller
 internal ADDR   :16 bits        ->      15          spike:0     /param:1(init)
-W_EN            :1  bit         |       [14:13]                 /update:00   /synpase:01 /soma:10    /STDP:11 
-W_DATA          :32  bits       |       12          RichClub:1  /Ordinary:0
-R_EN            :1  bit         |       11
-kill            :1  bit         |       10
-                                |       9
-                                |       8
-                                |       7
-                                |       [6:0]       ADDR
+                                        14          RichClub:1  /Ordinary:0
+W_EN            :1  bit         |       [13:12]     /update:00   /synpase:01 /soma:10    /STDP:11 
+W_DATA          :32  bits       |       [12:7]      ADDR[1]
+R_EN            :1  bit         |       [6:0]       ADDR[0]
+kill            :1  bit         |       
+                                |       SYNAPSE Protocol => PN Contoller to Internal modules
+                                |       iAddr
+                                |       Addr to Write | Addr to Read =>
+                                |       
                                 |
 
 

@@ -13,23 +13,26 @@ input clk, rst;
 input [15:0] iADDR;
 input [31:0] W_DATA;
 
-output W_EN2SOMA, W_EN2Synapse, W_EN2STDP;
-output R_EN2Synapse, R_EN2SOMA, R_EN2STDP;
+output reg W_EN2SOMA, W_EN2Synapse, W_EN2STDP;
+output reg R_EN2Synapse, R_EN2SOMA, R_EN2STDP;
 
-output wire [6:0] to_Synapse_Addr;
+wire _W_EN2SOMA, _W_EN2Synapse, _W_EN2STDP;
+wire _R_EN2Synapse, _R_EN2SOMA, _R_EN2STDP;
+
+output reg [6:0] to_Synapse_Addr;
 //output wire[13:0] to_Synapse_Addr;
 //output reg [15:0] to_SOMA_Addr;
-output wire [6:0] to_STDP_Addr;
+output reg [6:0] to_STDP_Addr;
 
-output wire [31:0] to_Synapse_DATA;
-output wire [31:0] to_SOMA_DATA;
-output wire [31:0] to_STDP_DATA;
+output reg [31:0] to_Synapse_DATA;
+output reg [31:0] to_SOMA_DATA;
+output reg [31:0] to_STDP_DATA;
 
 input SWU_EN;
 input wire [6:0] SWU_Addr;
 input wire [7:0] SWU_DATA;
 
-reg syn_switch = 0;
+//reg syn_switch = 0;
 
 //fired #N -> Synapse module의 memory 주소 형태로 변경
 reg [6:0] _iADDR; //7bit 가능?
@@ -38,22 +41,10 @@ reg [7:0] decoded_Addr;
 wire rdy;
 wire CD_inData, CD_outData;
 
-Addr_Decoder SAE(
-    .Addr(_iADDR),
-    .outAddr(decoded_Addr)
-);
-
-Clk_Delayer CD(
-    .clk(clk),
-    .ready(rdy),
-    .indata(CD_inData),
-    .outdata(CD_outData)
-)
-
 
 //ADDR decoding (latch 합성 피하기 위해서 주소와 데이터 구문을 분리?)
-always @(posedge clk or negedge rst) begin
-    if (iADDR[15] == 1) begin   // Param Initializing
+always @(posedge clk) begin
+    if (iADDR[14] == 1) begin   // Param Initializing
         case (iADDR[13:12])
             2'b01:  // to Synapse 
             begin
@@ -197,48 +188,12 @@ always @(posedge clk or negedge rst) begin
 end
 
 
-endmodule
-module Clk_Delayer(
-    .clk,
-    .ready,
-    .indata,
-    .outdata
-);
-
-input clk;
-input ready;
-
-input [13:0] indata;
-input [6:0] outdata;
-
-reg[13:0] q;
-
-always @(posedge clk) begin
-    q <= indata;
-    q[13:7] <= q[6:0];
-    
-end
-
-assign outdata = q[6:0];
-
-endmodule
-
-
-module Addr_Decoder(
-    Addr,
-    outAddr
-);
-
-input [6:0] Addr;
-output [6:0] outAddr;
-
-reg base;
-reg remains;
-
-assign base = Addr / 4; //TODO: int wrap? or bit cal.?
-assign remains = Addr % 4;
-
-assign outAddr = base + remains; //concat?
+//assign W_EN2SOMA = _W_EN2SOMA;
+//assign W_EN2Synapse = _W_EN2Synapse;
+//assign W_EN2STDP = _W_EN2STDP;
+//assign R_EN2Synapse = _R_EN2Synapse;
+//assign R_EN2SOMA = _R_EN2SOMA;
+//assign R_EN2STDP = _R_EN2STDP;
 
 
 endmodule

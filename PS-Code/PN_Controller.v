@@ -1,7 +1,7 @@
 module PN_Controller(clk, rst,
                     iADDR, W_DATA,
                     W_EN2Synapse, W_EN2SOMA, W_EN2STDP,
-                    R_EN2Synapse, R_EN2SOMA, R_EN2STDP,
+                    RC_EN2Synapse, R_EN2SOMA, R_EN2STDP,
                     to_Synapse_Addr, to_STDP_Addr,
                     to_Synapse_DATA, to_SOMA_DATA, to_STDP_DATA,
                     SWU_EN, SWU_Addr, SWU_DATA      // Synaptic Weight Update
@@ -14,10 +14,10 @@ input [15:0] iADDR;
 input [31:0] W_DATA;
 
 output reg W_EN2SOMA, W_EN2Synapse, W_EN2STDP;
-output reg R_EN2Synapse, R_EN2SOMA, R_EN2STDP;
+output reg RC_EN2Synapse, R_EN2SOMA, R_EN2STDP;
 
 wire _W_EN2SOMA, _W_EN2Synapse, _W_EN2STDP;
-wire _R_EN2Synapse, _R_EN2SOMA, _R_EN2STDP;
+wire _RC_EN2Synapse, _R_EN2SOMA, _R_EN2STDP;
 
 output reg [6:0] to_Synapse_Addr;
 //output wire[13:0] to_Synapse_Addr;
@@ -52,7 +52,7 @@ always @(posedge clk) begin
                     W_EN2Synapse <= 1'b1;
                     W_EN2SOMA <= 1'b0;
                     W_EN2STDP <= 1'b0;
-                    R_EN2Synapse <= 1'b0;
+                    RC_EN2Synapse <= 1'b0;
                     R_EN2SOMA <= 1'b0;
                     R_EN2STDP <= 1'b0;
 
@@ -67,7 +67,7 @@ always @(posedge clk) begin
                     W_EN2Synapse <= 1'b1;
                     W_EN2SOMA <= 1'b0;
                     W_EN2STDP <= 1'b0;
-                    R_EN2Synapse <= 1'b0;
+                    RC_EN2Synapse <= 1'b0;
                     R_EN2SOMA <= 1'b0;
                     R_EN2STDP <= 1'b0;
 
@@ -86,7 +86,7 @@ always @(posedge clk) begin
                 W_EN2Synapse <= 1'b0;
                 W_EN2SOMA <= 1'b1;
                 W_EN2STDP <= 1'b0;
-                R_EN2Synapse <= 1'b0;
+                RC_EN2Synapse <= 1'b0;
                 R_EN2SOMA <= 1'b0;
                 R_EN2STDP <= 1'b0;
 
@@ -103,7 +103,7 @@ always @(posedge clk) begin
                 W_EN2Synapse <= 1'b0;
                 W_EN2SOMA <= 1'b0;
                 W_EN2STDP <= 1'b1;
-                R_EN2Synapse <= 1'b0;
+                RC_EN2Synapse <= 1'b0;
                 R_EN2SOMA <= 1'b0;
                 R_EN2STDP <= 1'b0;
 
@@ -120,7 +120,7 @@ always @(posedge clk) begin
                 W_EN2Synapse <= 1'b1;
                 W_EN2SOMA <= 1'b0;
                 W_EN2STDP <= 1'b0;
-                R_EN2Synapse <= 1'b1;
+                RC_EN2Synapse <= 1'b1;
                 R_EN2SOMA <= 1'b0;
                 R_EN2STDP <= 1'b0;
 
@@ -133,12 +133,12 @@ always @(posedge clk) begin
             end
         endcase
         end 
-    else begin  //Spike Initializing
+    else begin  //Spike 
         if (iADDR[14] == 1) begin   // Rich Club => must 1 addr
             W_EN2Synapse <= 1'b0;
             W_EN2SOMA <= 1'b0;
             W_EN2STDP <= 1'b0;
-            R_EN2Synapse <= 1'b1;
+            RC_EN2Synapse <= 1'b1;
             R_EN2SOMA <= 1'b0;
             R_EN2STDP <= 1'b0;
 
@@ -154,7 +154,7 @@ always @(posedge clk) begin
                 W_EN2Synapse <= 1'b0;
                 W_EN2SOMA <= 1'b0;
                 W_EN2STDP <= 1'b0;
-                R_EN2Synapse <= 1'b1;
+                RC_EN2Synapse <= 1'b0;
                 R_EN2SOMA <= 1'b0;
                 R_EN2STDP <= 1'b0;
 
@@ -169,7 +169,7 @@ always @(posedge clk) begin
                 W_EN2Synapse <= 1'b0;
                 W_EN2SOMA <= 1'b0;
                 W_EN2STDP <= 1'b0;
-                R_EN2Synapse <= 1'b1;
+                RC_EN2Synapse <= 1'b0;
                 R_EN2SOMA <= 1'b0;
                 R_EN2STDP <= 1'b0;
 
@@ -191,7 +191,7 @@ end
 //assign W_EN2SOMA = _W_EN2SOMA;
 //assign W_EN2Synapse = _W_EN2Synapse;
 //assign W_EN2STDP = _W_EN2STDP;
-//assign R_EN2Synapse = _R_EN2Synapse;
+//assign RC_EN2Synapse = _RC_EN2Synapse;
 //assign R_EN2SOMA = _R_EN2SOMA;
 //assign R_EN2STDP = _R_EN2STDP;
 

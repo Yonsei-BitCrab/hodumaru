@@ -1,4 +1,4 @@
-module STACK_MACHINE_ADDR( clk, rst,
+module STACK_MACHINE_ADDR #(parameter DATA_WIDTH = 16) ( clk, rst,
 						ctl, o_wait,
 						DATA_in, DATA_out
                         // o_STACK_REG0, o_STACK_REG[1], o_STACK_REG[2]

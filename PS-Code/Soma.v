@@ -1,27 +1,21 @@
 	// soma module in physical neuron
 
-	module soma (	clk, rst, kill,
-					W_DATA,
-					weight,
-					in_spike, 
-					o_wait,
-					out_spike);
+	module soma (
+		input clk,
+		input rst,
+		input kill,
+		input en,
+		input [31:0] W_DATA, //from PN controller
+		input [15:0] weight, //from synapse
+		output o_wait,
+		output out_spike,
+
+	);
 	
 	// Neuron Inputs Declaration
-	input wire clk;
-	input wire [7:0] in_spike; //in
-	input wire [7:0] weight; //TODO:
-	input rst, kill;
-
-	// Neuron parameter data to be Initialized
-	input [31:0] W_DATA;
-	
-	//Neuron Outputs Declaration
 
 	reg _wait;
-	output o_wait;
-	output out_spike;
-
+	
 	// Spike Time
 	integer _spike;
 	integer _spikeDelaySum;
@@ -32,10 +26,11 @@
 	reg[7:0] _refr_time;
 	reg[7:0] _axon_delay;
 	reg[7:0] _V_leak;
-	reg[7:0] _in_spike;
+	
+	reg[15:0] _spike_interval;
 
 	integer _V_potential;			//TODO: change w/ fixed point library
-	integer tau;
+	integer tau = 10;
 
 
 	reg _is_REF;
@@ -49,35 +44,47 @@
 
 	parameter _E = 2;
 
+
 	// Neural Type Initializing using FSM
 	always @(posedge clk or negedge rst) begin
 		
-		if (!rst) begin   			// initialize
-			next_state_reg <= ACTIVE;
+		if (!rst) begin
+			next_state_reg <= DEACTIVE;
 		end
 
-		else begin   			// FSM
+		else if(kill == 1'b1) begin
+			next_state_reg <= DEACTIVE;
+		end
+
+		else begin
 			state_reg <= next_state_reg;
 			case (state_reg)
 				DEACTIVE:
-					next_state_reg <= next_state_reg;
-				
-				ACTIVE:
-					if (kill == 1'b1) begin
-						next_state_reg <= DEACTIVE; 
+					if(!en) begin
+						next_state_reg <= ACTIVE;
 					end
-					else if (_is_REF == 1'b1) begin
-						next_state_reg <= REFRATORY;
-					end
+
 					else begin
 						next_state_reg <= next_state_reg;
-					end    
-				
-				REFRATORY:
-					if (kill == 1'b1) begin
+					end
+				// 여기까지..
+				ACTIVE:
+					if(!en) begin
 						next_state_reg <= DEACTIVE;
 					end
-					else if (_is_REF == 1'b0) begin
+
+					else begin
+						if (_is_REF == 1'b1) begin
+							next_state_reg <= REFRATORY;
+						end
+						else begin
+							next_state_reg <= next_state_reg;
+						end    
+					end
+
+				
+				REFRATORY:
+					if (_is_REF == 1'b0) begin
 						next_state_reg <= ACTIVE;
 					end
 					else begin
@@ -90,18 +97,20 @@
 		end
 	end
 
+	always @(posedge clk) begin
+		_spike_interval <= W_DATA[15:0];
+	end
 
 
 	// Neuron Dynamics
 	always @(posedge clk or negedge rst) begin 
 		if (!rst) begin
+			_V_th <= W_DATA[:];
+			_refr_time <= W_DATA[:];
+			_axon_delay <= W_DATA[:];
+			_V_leak <= W_DATA[:];
 			_V_potential <= 0;
-			_V_th <= W_DATA[];
-			_refr_time <= W_DATA[];
-			_axon_delay <= W_DATA[];
-			_V_leak <= W_DATA[];
 			_spikeDelaySum <= 0;
-			_in_spike <= in_spike;
 		end
 
 		else begin
@@ -110,8 +119,8 @@
 			//_V_potential <= _V_potential + weight - in_spike *_V_leak; // TODO: (LLIF equation)
 
 			//_V_potential <= _V_potential + del_t / time_constant ( _V_rest - _V_potential + weight )
-			// _V_potential <= _V_potential * (1-e**(_in_spike/tau)) + weight; //TODO: LIF, e quatization sub
-			_V_potential <= _V_potential * (1-_E**(_in_spike/tau)) + weight; //TODO: LIF, e quatization sub
+			// _V_potential <= _V_potential * (1-e**(_spike_interval/tau)) + weight; //TODO: LIF, e quatization sub
+			_V_potential <= _V_potential * (1-_E**(_spike_interval/tau)) + weight; //TODO: LIF, e quatization sub
 
 
 			if (_V_potential >= _V_th) begin //fire out_spike

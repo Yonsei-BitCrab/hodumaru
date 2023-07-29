@@ -1,3 +1,6 @@
+
+
+
 module PN_Controller(clk, rst,
                     iADDR, W_DATA,
                     W_EN2Synapse, W_EN2SOMA, W_EN2STDP,

@@ -1,5 +1,4 @@
-//evaluation complete.
-module syn_int_Addr_ENCODER (
+module syn_int_Addis_RCCODER (
     input clk,
     input rst,
     input [6:0] iAddr,
@@ -54,7 +53,7 @@ endmodule
 module RichClub_switch (
     input clk,
     input rst,
-    input R_EN,
+    input is_RC,
     output reg Int_EN,
     output reg Deci_EN  
 );
@@ -63,7 +62,7 @@ module RichClub_switch (
 always @(posedge clk or negedge rst) begin 
 
     if (!rst) begin
-        if (R_EN) begin
+        if (is_RC) begin
             Int_EN <= 0;
             Deci_EN <= 1;
         end
@@ -75,7 +74,7 @@ always @(posedge clk or negedge rst) begin
     end
     
     else begin
-        if (R_EN) begin
+        if (is_RC) begin
             Int_EN <= 1;
             Deci_EN <= 1;
             
@@ -229,8 +228,6 @@ endmodule
 
 
 
-// TODO: timing analysis whether input should be sliced in decoder or in the synapse module!
-// TODO: register 유지에 대한 고민..!
 module synapse( 
     input clk, 
     input rst, 
@@ -238,7 +235,7 @@ module synapse(
     input [6:0] iAddr, 
     input [31:0] W_DATA,
     input W_EN, 
-    input R_EN,
+    input is_RC,
     output[15:0] weight_out
 );
 
@@ -257,7 +254,7 @@ wire [15:0] weight_set;
 wire weight_ctrl;
 
 //instantiation of submodule
-syn_int_Addr_ENCODER SIAE (
+syn_int_Addis_RCCODER SIAE (
     .clk(clk),
     .rst(rst),
     .iAddr(iAddr),
@@ -298,7 +295,7 @@ RandomGenerator RG (
 RichClub_switch RCSW (
     .clk(clk),
     .rst(rst),
-    .R_EN(R_EN),
+    .is_RC(is_RC),
     .Int_EN(Int_EN),
     .Deci_EN(Deci_EN)
 );

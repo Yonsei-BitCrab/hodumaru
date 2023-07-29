@@ -75,10 +75,39 @@ wire [1:0] STMC_gate_DATA_ctl_in;
 wire STMC_gate_DATA_wait_out;
 
 assign STMC_gate_ADDR_Din = SWU_EN ? SWU_Addr : iADDR;
-assign STMC_gate_DATA_Din = SWU_EN ? {24'b0, SWU_DATA} : W_DATA; 
-// TODO: ctl도 체크해야됨(1개(spike 일때 그냥 한개 온 경우, 0이라 한개가 없는 경우), 2개)
+assign STMC_gate_DATA_Din = SWU_EN ? {24'b0, SWU_DATA} : W_DATA;
 
-STACK_MACHINE STMC_gate_ADDR #(parameter DATA_WIDTH = 16) (
+// TODO: ctl도 체크해야됨(1개(spike 일때 그냥 한개 온 경우, 0이라 한개가 없는 경우), 2개)
+// TODO: param으로 올땐 ctl은 무조건 01(무조건 파라미터는 2개로 나뉠 일이 없음)
+
+if (STMC_gate_ADDR_Din[15] == 1) begin  // param => only 1      //TODO: Optimization is needed
+    STMC_gate_ADDR_ctl_in = 2'b01;
+    STMC_gate_DATA_ctl_in = 2'b01;
+end
+else begin
+    if (STMC_gate_ADDR_Din[14] == 1) begin    // spike+RichClub => only 1
+        STMC_gate_ADDR_ctl_in = 2'b01;
+        STMC_gate_DATA_ctl_in = 2'b01;
+    end
+    else begin
+        if (STMC_gate_ADDR_Din[13:7] == 0) begin    // 2nd ADDR is null
+            if (STMC_gate_ADDR_Din[6:0] == 0) begin // 2nd & 1st ADDR is null
+                STMC_gate_ADDR_ctl_in = 2'b00;
+                STMC_gate_DATA_ctl_in = 2'b00;
+            end
+            else begin                              // only 2nd is null, 1st is valid
+                STMC_gate_ADDR_ctl_in = 2'b01;
+                STMC_gate_DATA_ctl_in = 2'b01;
+            end
+        end
+        else begin                                  // 2nd ADDR is valid, 1st ADDR is valid
+            STMC_gate_ADDR_ctl_in = 2'b11;
+            STMC_gate_DATA_ctl_in = 2'b11;
+        end
+    end
+end
+
+STACK_MACHINE_ADDR STMC_gate_ADDR #(parameter DATA_WIDTH = 16) (
     .clk(clk),
     .rst(kill),
     .ctl(STMC_gate_ADDR_ctl_in),
@@ -116,15 +145,17 @@ always @(posedge clk) begin
             to_STDP_Addr <= 7'b0;
             to_STDP_DATA <= 7'b0;
         end
-        2'b10:  // to SOMA
-        begin
-            
-        end
 
-        2'b11:  // to STDP
-        begin
+        // 2'b10:  // to SOMA
+        // begin
             
-        end
+        // end
+
+        // 2'b11:  // to STDP
+        // begin
+            
+        // end
+
         2'b00:  // to SYNAPSE => RichClub
         begin
             rst2Synapse <= rst;
@@ -132,6 +163,23 @@ always @(posedge clk) begin
             RC_EN2Synapse <= 1'b1;
             to_Synapse_Addr <= STMC_gate_ADDR_Dout[6:0];
             to_Synapse_DATA <= STMC_gate_DATA_Dout;
+
+            W_EN2SOMA <= 1'b0;
+            R_EN2SOMA <= 1'b0;
+            to_SOMA_DATA <= 7'b0;
+
+            W_EN2STDP <= 1'b0;
+            R_EN2STDP <= 1'b0;
+            to_STDP_Addr <= 7'b0;
+            to_STDP_DATA <= 7'b0;
+        end
+        default:
+        begin
+            rst2Synapse <= rst;
+            W_EN2Synapse <= 1'b0;
+            RC_EN2Synapse <= 1'b0;
+            to_Synapse_Addr <= 0
+            to_Synapse_DATA <= 0
 
             W_EN2SOMA <= 1'b0;
             R_EN2SOMA <= 1'b0;
@@ -162,8 +210,21 @@ always @(posedge clk) begin
             to_STDP_Addr <= 7'b0;
             to_STDP_DATA <= 7'b0;
         end
-        else begin      // not RichClub =>
-            
+        else begin      // not RichClub
+            rst2Synapse <= rst;
+            W_EN2Synapse <= 1'b0;
+            RC_EN2Synapse <= 1'b0;
+            to_Synapse_Addr <= STMC_gate_ADDR_Dout[6:0];
+            to_Synapse_DATA <= STMC_gate_DATA_Dout;
+
+            W_EN2SOMA <= 1'b0;
+            R_EN2SOMA <= 1'b0;
+            to_SOMA_DATA <= 7'b0;
+
+            W_EN2STDP <= 1'b0;
+            R_EN2STDP <= 1'b0;
+            to_STDP_Addr <= 7'b0;
+            to_STDP_DATA <= 7'b0;
         end
     end
 end

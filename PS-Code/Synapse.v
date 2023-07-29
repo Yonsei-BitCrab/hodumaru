@@ -203,6 +203,27 @@ module RandomGenerator (
     output reg [7:0] randomValue
 );
 
+endmodule
+
+
+
+module weight_out_controller (
+    input clk,
+    input [6:0]iAddr,
+    output reg weight_ctrl = 0
+);
+
+parameter set = 1;
+parameter rest = 0;
+
+always @(posedge clk) begin
+    if (iAddr !== 0) begin   
+        weight_ctrl <= set; 
+    end   
+    else begin
+        weight_ctrl <= rest;
+    end
+end
 
 endmodule
 
@@ -232,9 +253,10 @@ wire Int_EN;
 wire Deci_EN;
 wire [7:0] weight_deci;
 wire [7:0] RC_Deci;
+wire [15:0] weight_set;
+wire weight_ctrl;
 
 //instantiation of submodule
-
 syn_int_Addr_ENCODER SIAE (
     .clk(clk),
     .rst(rst),
@@ -252,7 +274,7 @@ syn_int_BRAM SIB (
     .we(we),  
     .addr(addr), 
     .addr_col(addr_col),
-    .RAM_in(_W_DATA), 
+    .RAM_in(_W_DATA[15:8]), 
     .RAM_out(weight_int)
 );
 
@@ -281,68 +303,20 @@ RichClub_switch RCSW (
     .Deci_EN(Deci_EN)
 );
 
+weight_out_controller WOC(
+    .clk(clk),
+    .iAddr(iAddr),
+    .weight_ctrl(weight_ctrl)
+);
+
 always @(posedge clk) begin
     _W_DATA <= W_DATA;
 end
 
 assign weight_deci = Deci_EN ? RC_Deci : randomValue;
-assign weight_out[15:8] = weight_int;
-assign weight_out[7:0] = weight_deci;
+assign weight_set[15:8] = weight_int;
+assign weight_set[7:0] = weight_deci;
 
-endmodule
+assign weight_out = weight_ctrl ? weight_set : 16'b0000_0000_0000_0000;
 
-
-
-module FSM (
-    input [2:0] state,
-    output [2:0] next_state
-)
-
-parameter no = 3'b000;
-parameter zo = 3'b001;
-parameter ot = 3'b010;
-parameter to = 3'b011;
-parameter zt = 3'b100;
-parameter tz = 3'b101;
-
-always(posedge clk) begin
-if (data = 1'b1) begin
-    case (state):   
-        no: state <= zo; 
-        
-        zo: state <= ot;
-    
-        ot: state <= to;
-    
-        to: state <= ot;
-    
-        zt: state <= zo;
-    
-        tz: state <= zo;
-
-        default: state <= state;
-        endcase
-    end
-
-else begin
-    case (state):
-        no: state <= no; 
-        
-        zo: state <= zt;
-    
-        ot: state <= tz;
-    
-        to: state <= zt;
-    
-        zt: state <= no;
-    
-        tz: state <= no;
-
-        default: state <= state;
-
-        endcase
-    end
-end
-
-assign next_state = state;
 endmodule

@@ -571,6 +571,45 @@ end
 endmodule
 
 
+module RichClub_switch (
+    input clk,
+    input rst,
+    input R_EN,
+    output reg Int_EN,
+    output reg Deci_EN  
+);
+
+//memory access switching unit
+always @(posedge clk or negedge rst) begin 
+
+    if (!rst) begin
+        if (R_EN) begin
+            Int_EN <= 0;
+            Deci_EN <= 1;
+        end
+
+        else begin
+            Int_EN <= 1;
+            Deci_EN <= 0; 
+        end
+    end
+    
+    else begin
+        if (R_EN) begin
+            Int_EN <= 1;
+            Deci_EN <= 1;
+            
+        end
+
+        else begin
+            Int_EN <= 1;
+            Deci_EN <= 0;
+        end
+    end
+end
+
+endmodule
+
 
 
 // Block RAM with Resettable Data Output
@@ -698,19 +737,20 @@ input [15:0] iADDR; //줄일 수도 있음
 input [31:0] W_DATA;  
 input W_EN, R_EN;
 
-output reg [15:0] weight_out;
+output [15:0] weight_out;
 
-
+reg [31:0] _W_DATA;
 reg [6:0] _iAddr;
 wire [3:0] we;
 wire [4:0] addr;
 wire [1:0] addr_col;
 
 
-reg [7:0] _weight_int, _weight_deci;
+reg [7:0] _weight_int;
 reg [7:0] _randomValue;
-reg Int_EN;
-reg Deci_EN;
+wire Int_EN;
+wire Deci_EN;
+wire _weight_deci;
 
 //instantiation of submodule
 syn_int_Addr_ENCODER SIAE (
@@ -734,14 +774,14 @@ syn_int_BRAM SIB (
     .RAM_out(_weight_int)
 );
 
-syn_Deci_BRAM SDB (
+syn_Deci_RAM SDM (
     .clk(clk),
     .en(Deci_EN),
     .W_EN(W_EN),
     .iAddr(iAddr),
     .rst(rst),
-    .di(_W_DATA),
-    .dout(_weight_deci)
+    .di(_W_DATA[7:0]),
+    .dout(RC_Deci)
 );
 
 RandomGenerator RG (
@@ -750,39 +790,20 @@ RandomGenerator RG (
 )
 ;
 
+RichClub_switch RCSW (
+    .clk(clk),
+    .rst(rst),
+    .R_EN(R_EN),
+    .Int_EN(Int_EN),
+    .Deci_EN(Deci_EN)
+);
 
-//memory access switching unit
-always @(posedge clk or negedge rst) begin 
-
-    if (!rst) begin
-        if (R_EN) begin
-            Int_EN <= 0;
-            Deci_EN <= 1;
-        end
-
-        else begin
-            Int_EN <= 1;
-            Deci_EN <= 0; 
-        end
-    end
-
-    else begin
-        if (R_EN) begin
-            Int_EN <= 1;
-            Deci_EN <= 1;
-        end
-
-        else begin
-            Int_EN <= 1;
-            Deci_EN <= 0;
-        end
-
-
-
-        weight_out[15:8] <= _weight_int;
-        weight_out[7:0] <=  _randomValue;
-    end
-
+always @(posedge clk) begin
+    _W_DATA <= W_DATA;
 end
+
+assign _weight_deci = Deci_EN ? RC_Deci : _randomValue;
+assign weight_out[15:8] = _weight_int;
+assign weight_out[7:0] = _weight_deci;
 
 endmodule

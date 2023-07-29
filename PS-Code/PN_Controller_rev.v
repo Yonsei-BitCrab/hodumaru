@@ -1,5 +1,6 @@
-module PN_Controller(clk, rst,
+module PN_Controller(clk, rst, kill,
                     iADDR, W_DATA,
+                    rst2Synapse,
                     W_EN2Synapse, W_EN2SOMA, W_EN2STDP,
                     RC_EN2Synapse, R_EN2SOMA, R_EN2STDP,
                     to_Synapse_Addr, to_STDP_Addr,
@@ -9,10 +10,11 @@ module PN_Controller(clk, rst,
 );
 
 
-input clk, rst;
+input clk, rst, kill;
 input [15:0] iADDR;
 input [31:0] W_DATA;
 
+output rst2Synapse;
 output reg W_EN2SOMA, W_EN2Synapse, W_EN2STDP;
 output reg RC_EN2Synapse, R_EN2SOMA, R_EN2STDP;
 
@@ -29,7 +31,7 @@ output reg [31:0] to_SOMA_DATA;
 output reg [31:0] to_STDP_DATA;
 
 input SWU_EN;
-input wire [6:0] SWU_Addr;
+input wire [15:0] SWU_Addr;
 input wire [7:0] SWU_DATA;
 
 //reg syn_switch = 0;
@@ -60,6 +62,113 @@ STACK_MACHINE STMC (
 );
 
 
+
+// MUX w/ input value => from AXI or update
+wire [15:0] STMC_gate_ADDR_Din;
+wire [15:0] STMC_gate_ADDR_Dout;
+wire [1:0] STMC_gate_ADDR_ctl_in;
+wire STMC_gate_ADDR_wait_out;
+
+wire [15:0] STMC_gate_DATA_Din;
+wire [15:0] STMC_gate_DATA_Dout;
+wire [1:0] STMC_gate_DATA_ctl_in;
+wire STMC_gate_DATA_wait_out;
+
+assign STMC_gate_ADDR_Din = SWU_EN ? SWU_Addr : iADDR;
+assign STMC_gate_DATA_Din = SWU_EN ? {24'b0, SWU_DATA} : W_DATA; 
+// TODO: ctl도 체크해야됨(1개(spike 일때 그냥 한개 온 경우, 0이라 한개가 없는 경우), 2개)
+
+STACK_MACHINE STMC_gate_ADDR #(parameter DATA_WIDTH = 16) (
+    .clk(clk),
+    .rst(kill),
+    .ctl(STMC_gate_ADDR_ctl_in),
+    .o_wait(STMC_gate_ADDR_wait_out),
+    .DATA_in(STMC_gate_ADDR_Din),
+    .DATA_out(STMC_gate_ADDR_Dout)
+);
+
+STACK_MACHINE STMC_gate_DATA #(parameter DATA_WIDTH = 32) (
+    .clk(clk),
+    .rst(kill),
+    .ctl(STMC_gate_DATA_ctl_in),
+    .o_wait(STMC_gate_DATA_wait_out),
+    .DATA_in(STMC_gate_DATA_Din),
+    .DATA_out(STMC_gate_DATA_Dout)
+);
+
+always @(posedge clk) begin
+    if (STMC_gate_ADDR_Dout[15] == 1) begin // PARAM In
+        case (STMC_gate_ADDR_Dout[13:12])
+        2'b01:  // to SYNAPSE
+        begin
+            rst2Synapse <= rst;
+            W_EN2Synapse <= 1'b1;
+            RC_EN2Synapse <= 1'b0;
+            to_Synapse_Addr <= STMC_gate_ADDR_Dout[6:0];
+            to_Synapse_DATA <= STMC_gate_DATA_Dout;
+
+            W_EN2SOMA <= 1'b0;
+            R_EN2SOMA <= 1'b0;
+            to_SOMA_DATA <= 7'b0;
+
+            W_EN2STDP <= 1'b0;
+            R_EN2STDP <= 1'b0;
+            to_STDP_Addr <= 7'b0;
+            to_STDP_DATA <= 7'b0;
+        end
+        2'b10:  // to SOMA
+        begin
+            
+        end
+
+        2'b11:  // to STDP
+        begin
+            
+        end
+        2'b00:  // to SYNAPSE => RichClub
+        begin
+            rst2Synapse <= rst;
+            W_EN2Synapse <= 1'b1;
+            RC_EN2Synapse <= 1'b1;
+            to_Synapse_Addr <= STMC_gate_ADDR_Dout[6:0];
+            to_Synapse_DATA <= STMC_gate_DATA_Dout;
+
+            W_EN2SOMA <= 1'b0;
+            R_EN2SOMA <= 1'b0;
+            to_SOMA_DATA <= 7'b0;
+
+            W_EN2STDP <= 1'b0;
+            R_EN2STDP <= 1'b0;
+            to_STDP_Addr <= 7'b0;
+            to_STDP_DATA <= 7'b0;
+        end
+        endcase
+    end
+
+    else begin  // SPIKE
+        if (STMC_gate_ADDR_Dout[14] == 1) begin // RichClub => must 1 addr
+            rst2Synapse <= rst;
+            W_EN2Synapse <= 1'b0;
+            RC_EN2Synapse <= 1'b1;
+            to_Synapse_Addr <= STMC_gate_ADDR_Dout[6:0];
+            to_Synapse_DATA <= STMC_gate_DATA_Dout;
+
+            W_EN2SOMA <= 1'b0;
+            R_EN2SOMA <= 1'b0;
+            to_SOMA_DATA <= 7'b0;
+
+            W_EN2STDP <= 1'b0;
+            R_EN2STDP <= 1'b0;
+            to_STDP_Addr <= 7'b0;
+            to_STDP_DATA <= 7'b0;
+        end
+        else begin      // not RichClub =>
+            
+        end
+    end
+end
+
+
 //ADDR decoding (latch 합성 피하기 위해서 주소와 데이터 구문을 분리?)
 always @(posedge clk) begin
     if (iADDR[14] == 1) begin   // Param Initializing
@@ -67,6 +176,8 @@ always @(posedge clk) begin
             2'b01:  // to Synapse 
             begin
                 if (SWU_EN == 1'b0) begin   //from AXI
+
+                // rst 줘야함
                     W_EN2Synapse <= 1'b1;
                     W_EN2SOMA <= 1'b0;
                     W_EN2STDP <= 1'b0;

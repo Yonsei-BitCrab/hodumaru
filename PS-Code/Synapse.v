@@ -551,19 +551,19 @@ always @(posedge clk) begin
     else begin
         case(remainder)
             2'b00:
-                we = 4'b0001;
+                we <= 4'b0001;
                 
             2'b01:
-                we = 4'b0010;
+                we <= 4'b0010;
                 
             2'b10:
-                we = 4'b0100;
+                we <= 4'b0100;
                 
             2'b11:
-                we = 4'b1000;
+                we <= 4'b1000;
                 
             default:
-                we = we;
+                we <= we;
         endcase
     end
 end
@@ -575,17 +575,16 @@ endmodule
 
 // Block RAM with Resettable Data Output
 // File: rams_sp_rf_rst.v
-module syn_int_BRAM (clk, en, W_EN, we, addr, addr_col, rst, RAM_in, RAM_out);
+module syn_int_BRAM (clk, kill, en, W_EN, we, addr, addr_col, RAM_in, RAM_out);
 parameter NUM_COL = 4;
 parameter COL_WIDTH = 8;
 parameter ADDR_WIDTH = 5;
 parameter DATA_WIDTH = NUM_COL*COL_WIDTH; // Data Width in bits (4*8=32)
 
-input clk, en, W_EN;
+input clk, kill, en, W_EN;
 input [NUM_COL-1:0] we; //4bit
 input [ADDR_WIDTH-1:0] addr;
 input [1:0] addr_col;
-input rst;
 input [DATA_WIDTH-1:0] RAM_in;
 
 output reg [7:0] RAM_out;
@@ -594,8 +593,8 @@ output reg [7:0] RAM_out;
 
 integer i;
 //memory
-always @(posedge clk or negedge rst) begin
-   if (!rst) begin
+always @(posedge clk) begin
+   if (kill) begin
       // Reset RAM_out to 0 on reset
       RAM_out <= 0;
     end 
@@ -620,43 +619,67 @@ endmodule
 
 
 
-module syn_Deci_BRAM (clk, en, W_EN, rst, addr, di, dout);
-    input clk;
-    input en;
-    input W_EN;
-    input rst;
-    input [9:0] addr;
-    input [15:0] di;
-    output [15:0] dout;
+module syn_Deci_MEM (clk, kill, en, W_EN, rst, iAddr, di, dout);
+input clk;
+input kill;
+input en;
+input W_EN;
+input rst;
+input [6:0] iAddr;
+input [7:0] di;
+output reg [7:0] dout;
 
-    reg [7:0] ram [1023:0];
-    reg [15:0] dout;
+reg [15:0] ram [3:0];
+reg  count = 0;
+    
+integer i;
 
-    always @(RN, EN) begin
+wire [15:0] metadata;
+
+assign metadata[14:8] = iAddr;
+assign metadata[7:0] = di;
+
+always @(posedge clk) begin
+    if (kill) begin
+        count <= 0;
+        for (i=0; i<4; i=i+1) begin
+            ram[i] <= 0;
+        end
+    end
+     
+    else begin
         if (en) //optional enable
         begin
-            if (we) //write enable
-                ram[addr] <= di;
-            if (rst) //optional reset
-                dout <= 0;
+            if (W_EN) begin //write enable
+                    ram[count] <= metadata;
+                    count <= count + 1;
+            end
+        
+            else begin
+                for (i=0; i<4; i=i+1) begin
+                    if (ram[i][14:8] == iAddr) begin
+                        dout <= ram[i][7:0];
+                    end
+                end 
+            end
         end
-
-        else
-        dout <= ram[addr];
     end
     
+end
 endmodule
 
 
 module RandomGenerator (
     input clk,
-    output reg randomValue
+    output reg [7:0] randomValue
 );
 
 always @(posedge clk) begin
     randomValue <= $urandom; 
 end
+
 endmodule
+
 
 
 // TODO: timing analysis whether input should be sliced in decoder or in the synapse module!
@@ -664,7 +687,7 @@ endmodule
 module synapse( clk, rst, kill,
                 iADDR, W_DATA,
                 W_EN, R_EN,
-                _weight_out
+                weight_out
                         );
 
 
@@ -675,18 +698,17 @@ input [15:0] iADDR; //줄일 수도 있음
 input [31:0] W_DATA;  
 input W_EN, R_EN;
 
-// TODO: tomorrow 16bit change with random generator
-output reg [15:0] _weight_out;
+output reg [15:0] weight_out;
 
-reg [31:0] _W_DATA;
+
 reg [6:0] _iAddr;
-reg [7:0] _RC_table [7:0];
 wire [3:0] we;
 wire [4:0] addr;
 wire [1:0] addr_col;
 
-reg [7:0] _weight_int;
 
+reg [7:0] _weight_int, _weight_deci;
+reg [7:0] _randomValue;
 reg Int_EN;
 reg Deci_EN;
 
@@ -695,19 +717,19 @@ syn_int_Addr_ENCODER SIAE (
     .rst(rst),
     .clk(clk),
     .iAddr(iADDR[6:0]),
-    .we(we)
+    .we(we),
     .addr(addr),
     .addr_col(addr_col)
 );
 
 syn_int_BRAM SIB (
     .clk(clk),
+    .kill(kill),
     .en(Int_EN),
     .W_EN(W_EN), 
     .we(we),  
     .addr(addr), 
     .addr_col(addr_col),
-    .rst(rst),
     .RAM_in(_W_DATA), 
     .RAM_out(_weight_int)
 );
@@ -718,12 +740,15 @@ syn_Deci_BRAM SDB (
     .W_EN(W_EN),
     .iAddr(iAddr),
     .rst(rst),
-    .RAM_in(_W_DATA),
-    .RAM_out(_weight_deci)
+    .di(_W_DATA),
+    .dout(_weight_deci)
 );
 
-
-
+RandomGenerator RG (
+    .clk(clk),
+    .randomValue(_randomValue)
+)
+;
 
 
 //memory access switching unit
@@ -741,10 +766,23 @@ always @(posedge clk or negedge rst) begin
         end
     end
 
+    else begin
+        if (R_EN) begin
+            Int_EN <= 1;
+            Deci_EN <= 1;
+        end
+
+        else begin
+            Int_EN <= 1;
+            Deci_EN <= 0;
+        end
+
+
+
+        weight_out[15:8] <= _weight_int;
+        weight_out[7:0] <=  _randomValue;
+    end
+
 end
-
-
-// assign _weight_out = _weight_out;
-
 
 endmodule

@@ -1,10 +1,10 @@
-module STACK_MACHINE #(parameter DATA_WIDTH = 16) ( clk, rst,
+module STACK_MACHINE  ( clk, rst,
 						ctl, o_wait,
 						DATA_in, DATA_out
                         // o_STACK_REG0, o_STACK_REG[1], o_STACK_REG[2]
 );
 
-parameter DATA_WIDTH = 16;
+parameter DATA_WIDTH = 32;
 parameter STACK_SIZE = 3;       // IF Size increases, You have to add codes(refer to STATE REG)
 
 input clk, rst;
@@ -18,7 +18,7 @@ reg [1:0] next_state_reg, state_reg;
 reg[DATA_WIDTH-1:0] _STACK_REG[STACK_SIZE-1:0];
 reg[DATA_WIDTH-1:0] _next_STACK_REG[STACK_SIZE-1:0];
 // reg[15:0] o_STACK_REG0, o_STACK_REG[1], o_STACK_REG[2];
-reg [15:0] buf_DATA_out;
+reg [DATA_WIDTH-1:0] buf_DATA_out;
 
 always @(posedge clk) begin
 	if (rst == 1'b1) begin
@@ -111,7 +111,7 @@ always @(posedge clk, posedge rst, posedge ctl) begin
 	end
 end
 
-always @(posedge clk, posedge ctl,posedge rst) begin
+always @(posedge clk, posedge rst) begin
 	if (rst == 1'b1) begin
         buf_DATA_out <= 0;
 		o_wait <= 1'b0;
@@ -144,6 +144,7 @@ always @(posedge clk, posedge ctl,posedge rst) begin
 			2'b10:
             begin
                 buf_DATA_out <= DATA_in;
+				//buf_DATA_out <= 1;
 				o_wait <= 1'b0;
                 _next_STACK_REG[0] <= 0;
                 _next_STACK_REG[1] <= 0;

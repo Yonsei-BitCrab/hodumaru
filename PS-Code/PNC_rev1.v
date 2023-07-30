@@ -8,7 +8,8 @@ module PhysicalNeuronController_iLoop(
 
     EN_SYNAPSE, EN_SOMA, EN_STDP,
     RC_SYNAPSE, RC_SOMA, RC_STDP,
-    W_EN2Synapse, W_EN2SOMA, W_EN2STDP
+    W_EN2Synapse, W_EN2SOMA, W_EN2STDP,
+    o_ctrl
 );
 
 input clk, rst, kill;
@@ -22,26 +23,47 @@ input [7:0] SWU_DATA;
 output [6:0] Addr2SYNAPSE, Addr2SOMA, Addr2STDP;
 output [31:0] Data2SYNAPSE, Data2SOMA, Data2STDP;
 
+output EN_SYNAPSE, EN_SOMA, EN_STDP;
+output RC_SYNAPSE, RC_SOMA, RC_STDP;
+output W_EN2Synapse, W_EN2SOMA, W_EN2STDP;
+
+// DEBUG
+output [1:0] o_ctrl;
+
 // Stack Machine
 wire [15:0] STMC_gate_ADDR_Din;
 wire [15:0] STMC_gate_ADDR_Dout;
-reg [1:0] STMC_gate_ADDR_ctl_in;
+//reg [1:0] STMC_gate_ADDR_ctl_in;
 wire STMC_gate_ADDR_wait_out;
 
-wire [15:0] STMC_gate_DATA_Din;
-wire [15:0] STMC_gate_DATA_Dout;
-reg [1:0] STMC_gate_DATA_ctl_in;
+wire [32:0] STMC_gate_DATA_Din;
+wire [32:0] STMC_gate_DATA_Dout;
+//reg [1:0] STMC_gate_DATA_ctl_in;
 wire STMC_gate_DATA_wait_out;
 
-assign STMC_gate_ADDR_Din = SWU_EN ? SWU_Addr : iADDR;
+assign STMC_gate_ADDR_Din = SWU_EN ? SWU_ADDR : iADDR;
 assign STMC_gate_DATA_Din = SWU_EN ? {24'b0, SWU_DATA} : W_DATA;
 
 // TODO: Control line for STMC is needed
+wire [1:0] ctl_line;
+PNC_STMC_Control_Unit STMC_CU (
+    .clk(clk),
+	.rst(rst),
+    .iAddr(STMC_gate_ADDR_Din),
+    .ctrl(ctl_line)
+);
+
+//DEBUG
+assign o_ctrl = ctl_line;
+//assign STMC_gate_ADDR_ctl_in = ctl_line;
+//assign STMC_gate_DATA_ctl_in = ctl_line;
+
 
 STACK_MACHINE_ADDR STMC_gate_ADDR (
     .clk(clk),
     .rst(kill),
-    .ctl(STMC_gate_ADDR_ctl_in),
+    //.ctl(STMC_gate_ADDR_ctl_in),
+	 .ctl(ctl_line),
     .o_wait(STMC_gate_ADDR_wait_out),
     .DATA_in(STMC_gate_ADDR_Din),
     .DATA_out(STMC_gate_ADDR_Dout)
@@ -50,7 +72,8 @@ STACK_MACHINE_ADDR STMC_gate_ADDR (
 STACK_MACHINE STMC_gate_DATA  (
     .clk(clk),
     .rst(kill),
-    .ctl(STMC_gate_DATA_ctl_in),
+    //.ctl(STMC_gate_DATA_ctl_in),
+	 .ctl(ctl_line),
     .o_wait(STMC_gate_DATA_wait_out),
     .DATA_in(STMC_gate_DATA_Din),
     .DATA_out(STMC_gate_DATA_Dout)
@@ -63,7 +86,7 @@ wire w_W_EN2Synapse, w_W_EN2SOMA, w_W_EN2STDP;
 
 PNC_ADDR_Control_Unit PNC_ADDR_CU(
     .clk(clk),
-    .iADDR_ctl(iADDR[15:12]),
+    .iADDR_ctl(STMC_gate_ADDR_Dout[15:12]),
     .EN_SYNAPSE(w_EN_SYNAPSE), 
     .EN_SOMA(w_EN_SOMA), 
     .EN_STDP(w_EN_STDP),

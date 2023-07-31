@@ -25,10 +25,11 @@
 	reg[7:0] _V_th;
 	reg[7:0] _V_leak;
 	reg[7:0] _refr_time;
-	reg[15:0] _axon_delay;
+	reg[15:0] _axon_delay = 0;
 	reg[15:0] _spike_interval;
 	reg[15:0] _V_potential;
-	reg[15:0] _dummy;			//TODO: change w/ fixed point library
+	reg[15:0] _next_spike_reg;
+
 	wire _is_REF; //TODO:
 	integer tau = 10;
 
@@ -57,6 +58,9 @@
 		._is_REF(_is_REF)		
 	);
 	
+
+	reg [15:0] dout;
+
 	// Neural Type Initializing using FSM
 	always @(posedge clk or negedge rst) begin
 		
@@ -107,8 +111,10 @@
 		end
 	end
 
+	//spike_reg
 	always @(posedge clk) begin
-		_spike_interval <= W_DATA[15:0];
+		_next_spike_reg <= W_DATA[15:0]
+		_spike_interval <= _next_spike_reg;
 	end
 
 
@@ -127,25 +133,23 @@
 		else begin
 
 		if (state_reg == ACTIVE) begin
-			if(!_is_REF) begin
+			if(!is_skip_REF) begin
 				_V_potential <= _V_potential * (1-_E**(_spike_interval/tau)) + weight; //TODO: LIF, e quatization sub
-				//_dummy <= 0;
 			end
 
 			else begin
-				_V_potential <= 0;
-				//_dummy <= weight;
-				//_dummy <= _spike_interval;
+				_V_potential <= weight;
+				
 			end
 		end
 		
 		else if (state_reg == REFRATORY) begin
 			if (!_is_REF) begin
-				_spikeDelaySum <= 0;
+				_V_potential <= weight;
 			end
 
 			else begin
-				_spikeDelaySum <= _spikeDelaySum + _spike_interval;
+				_V_potential <= _V_potential;
 			end
 
 		end
@@ -172,42 +176,78 @@
 ///////////////////////////////
 ///////////////////////////////
 
-	module check_isREF (
+	module isREF_controller (
 		input [15:0] _V_potential,
 		input [15:0] _spike_interval,
 		input [15:0] _axon_delay,
+		input [7:0] _refr_time;
 		input [7:0] _V_th,
-		output reg [15:0] spike_out,
-		output reg _is_REF
+		output reg [15:0] spike_out= 0,
+		output reg _is_REF = ;
 	);
 
+	reg is_skip_REF = 1'b0;
 
 	always @(_V_potential) begin
-		if (_V_potential >= _V_th) begin
-			_is_REF <= 1'b1;
-			spike_out <= _spike_interval + _axon_delay; //fire spike
+		if (en) begin
+			if (_V_potential >= _V_th) begin
+				is_skip_REF <= 1'b1;
+				spike_out <= _spike_interval + _axon_delay; //fire spike
+				end
+			else begin
+				is_skip_REF <= 1'b0;
+				spike_out <= 0;
 			end
+		end
+
 		else begin
-			_is_REF <= 1'b0;
+			is_skip_REF <= is_skip_REF;
 			spike_out <= 0;
 		end
 	end
-	
-	endmodule
 
-
-	module confirm_isREF (
-		input [7:0] _spikeDelaySum_int;
-		input [7:0] _refr_time;
-		output reg _is_REF = 1'b0;
-	);
-		always @(_spikeDelaySum_int) begin
-			if (_spikeDelaySum_int >= _refr_time) begin
+	//check next spike interval is larger than ref_time, if then pass REF. otherwise, set REF state.
+	always @(is_skip_REF) begin
+		if(is_skip_REF) begin
+			if (_next_spike_reg[15:8]>= _refr_time) begin
 				_is_REF <= 1'b0;
+				_spikeDelaySum <= 1'b0;
 			end
 			else begin
-				_is_REF <= 1'b1;
+				_is_REF <=1'b1;
+				_spikeDelaySum <= _next_spike_reg[15:8];
 			end
-				//_wait <= 1'b1;		//TODO: grammar check needed
 		end
+
+		else begin
+			_is_REF <= 1'b0;
+		end
+	end
+
+	always @(_next_spike_reg) begin
+		if(!en) begin
+			_spikeDelaySum <= _spikeDelaySum + _next_spike_reg[15:8];
+		end
+	end
+
+	always @(_spikeDelaySum) begin
+		if (!en) begin
+			if(_spikeDelaySum >= _refr_time) begin
+				_is_REF <=1'b0;
+			end
+		end
+	end
+
+
+	always @(_is_REF) begin
+		if(_is_REF) begin
+			en <= 0;
+		end
+
+		else begin
+			en <= 1;
+		end
+	end
+
+
 	endmodule

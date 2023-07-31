@@ -9,7 +9,7 @@ module PhysicalNeuronController_iLoop(
     EN_SYNAPSE, EN_SOMA, EN_STDP,
     RC_SYNAPSE, RC_SOMA, RC_STDP,
     W_EN2Synapse, W_EN2SOMA, W_EN2STDP,
-    o_ctrl
+    o_ctrl, dbg_DATA1, dbg_DATA2
 );
 
 input clk, rst, kill;
@@ -29,6 +29,7 @@ output W_EN2Synapse, W_EN2SOMA, W_EN2STDP;
 
 // DEBUG
 output [1:0] o_ctrl;
+output [31:0] dbg_DATA1, dbg_DATA2;
 
 // Stack Machine
 wire [15:0] STMC_gate_ADDR_Din;
@@ -36,13 +37,21 @@ wire [15:0] STMC_gate_ADDR_Dout;
 //reg [1:0] STMC_gate_ADDR_ctl_in;
 wire STMC_gate_ADDR_wait_out;
 
-wire [32:0] STMC_gate_DATA_Din;
-wire [32:0] STMC_gate_DATA_Dout;
+wire [31:0] STMC_gate_DATA_Din;
+wire [31:0] STMC_gate_DATA_Dout;
 //reg [1:0] STMC_gate_DATA_ctl_in;
 wire STMC_gate_DATA_wait_out;
 
-assign STMC_gate_ADDR_Din = SWU_EN ? SWU_ADDR : iADDR;
-assign STMC_gate_DATA_Din = SWU_EN ? {24'b0, SWU_DATA} : W_DATA;
+
+//DEBUG ///
+// assign STMC_gate_ADDR_Din = SWU_EN ? SWU_ADDR : iADDR; //Origin Code
+// assign STMC_gate_DATA_Din = SWU_EN ? {24'b0, SWU_DATA} : W_DATA;  // Origin Code
+//always @(posedge clk) begin
+assign STMC_gate_ADDR_Din = SWU_EN ? SWU_ADDR : iADDR; //Origin Code
+assign STMC_gate_DATA_Din = SWU_EN ? {24'b0, SWU_DATA} : W_DATA;  // Origin Code
+//end
+//DEBUG ///
+
 
 // TODO: Control line for STMC is needed
 wire [1:0] ctl_line;
@@ -69,15 +78,19 @@ STACK_MACHINE_ADDR STMC_gate_ADDR (
     .DATA_out(STMC_gate_ADDR_Dout)
 );
 
-STACK_MACHINE STMC_gate_DATA  (
+STACK_MACHINE_DATA STMC_gate_DATA  (
     .clk(clk),
     .rst(kill),
     //.ctl(STMC_gate_DATA_ctl_in),
-	 .ctl(ctl_line),
+	.ctl(ctl_line),
     .o_wait(STMC_gate_DATA_wait_out),
     .DATA_in(STMC_gate_DATA_Din),
     .DATA_out(STMC_gate_DATA_Dout)
 );
+
+// debUG
+assign dbg_DATA1 = STMC_gate_DATA_Din;
+assign dbg_DATA2 = STMC_gate_DATA_Dout;
 
 // Control Unit
 wire w_EN_SYNAPSE, w_EN_SOMA, w_EN_STDP;

@@ -20,7 +20,7 @@ always @(posedge clk) begin
         end
         else begin      // spike
             if (iAddr[14] == 1) begin   // Spike from RichClub => only 1
-                o_ctrl <= 2'b01;
+                o_ctrl <= 2'b10;
             end
             else begin
                 if (iAddr[13:7] == 7'b0) begin  // 2nd Addr is null

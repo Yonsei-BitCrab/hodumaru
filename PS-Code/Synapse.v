@@ -208,19 +208,26 @@ endmodule
 
 module weight_out_controller (
     input clk,
+    input rst,
     input [6:0]iAddr,
     output reg weight_ctrl = 0
 );
 
 parameter set = 1;
-parameter rest = 0;
+parameter reset = 0;
 
 always @(posedge clk) begin
-    if (iAddr !== 0) begin   
-        weight_ctrl <= set; 
-    end   
+    if (!rst) begin
+        weight_ctrl <= reset;
+    end
+    
     else begin
-        weight_ctrl <= rest;
+        if (iAddr !== 0) begin   
+            weight_ctrl <= set; 
+        end   
+        else begin
+            weight_ctrl <= reset;
+        end
     end
 end
 
@@ -302,6 +309,7 @@ RichClub_switch RCSW (
 
 weight_out_controller WOC(
     .clk(clk),
+    .rst(rst),
     .iAddr(iAddr),
     .weight_ctrl(weight_ctrl)
 );

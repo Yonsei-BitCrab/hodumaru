@@ -25,7 +25,7 @@
 	reg[7:0] _V_th;
 	reg[7:0] _V_leak;
 	reg[7:0] _refr_time;
-	reg[15:0] _axon_delay = 0;
+	reg[15:0] _axon_delay;
 	reg[15:0] _spike_interval;
 	reg[15:0] _V_potential;
 	reg[15:0] _dummy;			//TODO: change w/ fixed point library
@@ -129,13 +129,13 @@
 		if (state_reg == ACTIVE) begin
 			if(!_is_REF) begin
 				_V_potential <= _V_potential * (1-_E**(_spike_interval/tau)) + weight; //TODO: LIF, e quatization sub
-				_dummy <= 0;
+				//_dummy <= 0;
 			end
 
 			else begin
 				_V_potential <= 0;
-				_dummy <= weight;
-				_dummy <= _spike_interval;
+				//_dummy <= weight;
+				//_dummy <= _spike_interval;
 			end
 		end
 		
@@ -186,7 +186,6 @@
 		if (_V_potential >= _V_th) begin
 			_is_REF <= 1'b1;
 			spike_out <= _spike_interval + _axon_delay; //fire spike
-			_spikeDelaySum <= 0;
 			end
 		else begin
 			_is_REF <= 1'b0;
@@ -200,7 +199,7 @@
 	module confirm_isREF (
 		input [7:0] _spikeDelaySum_int;
 		input [7:0] _refr_time;
-		output reg _is_REF
+		output reg _is_REF = 1'b0;
 	);
 		always @(_spikeDelaySum_int) begin
 			if (_spikeDelaySum_int >= _refr_time) begin

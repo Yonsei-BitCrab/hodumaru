@@ -12,7 +12,7 @@ input wire clk, rst, kill;
 input wire [7:0] pre_spike;
 input wire [7:0] post_spike; 
 input wire [7:0] weight;
-input wire [7:0] neuron_number;
+input wire [6:0] neuron_number;
 
 
 

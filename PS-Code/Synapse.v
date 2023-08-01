@@ -22,8 +22,8 @@ end
 
 
 //we encoding
-always @(posedge clk or negedge rst) begin
-    if (!rst) begin
+always @(posedge clk) begin
+    if (rst) begin
         we = 4'b1111;
     end
 
@@ -59,9 +59,9 @@ module RichClub_switch (
 );
 
 //memory access switching unit
-always @(posedge clk or negedge rst) begin 
+always @(posedge clk) begin 
 
-    if (!rst) begin
+    if (rst) begin
         if (is_RC) begin
             Int_EN <= 0;
             Deci_EN <= 1;
@@ -158,7 +158,7 @@ assign metadata[14:8] = iAddr;
 assign metadata[7:0] = di;
 
 always @(posedge clk) begin
-    if (!rst) begin
+    if (rst) begin
         ram[count] <= metadata;
         count <= count + 1;
     end
@@ -207,8 +207,7 @@ endmodule
 
 
 module weight_out_controller (
-    input clk,
-    input rst,
+    input clk, rst, W_EN,
     input [6:0]iAddr,
     output reg weight_ctrl = 0
 );
@@ -217,7 +216,7 @@ parameter set = 1;
 parameter reset = 0;
 
 always @(posedge clk) begin
-    if (!rst) begin
+    if (rst || W_EN) begin
         weight_ctrl <= reset;
     end
     
@@ -235,6 +234,27 @@ endmodule
 
 
 
+
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 2023/07/29 00:22:11
+// Design Name: 
+// Module Name: synapse
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
 module synapse( 
     input clk, 
     input rst, 
@@ -242,8 +262,9 @@ module synapse(
     input [6:0] iAddr, 
     input [31:0] W_DATA,
     input W_EN, 
-    input is_RC,
-    output[15:0] weight_out
+    input R_EN,
+    //output [15:0] weight_out
+    output reg [15:0] weight_out
 );
 
 reg [31:0] _W_DATA;
@@ -261,7 +282,7 @@ wire [15:0] weight_set;
 wire weight_ctrl;
 
 //instantiation of submodule
-syn_int_Addis_RCCODER SIAE (
+syn_int_Addr_ENCODER SIAE (
     .clk(clk),
     .rst(rst),
     .iAddr(iAddr),
@@ -272,29 +293,31 @@ syn_int_Addis_RCCODER SIAE (
 
 syn_int_BRAM SIB (
     .clk(clk),
+    .rst(rst),
     .kill(kill),
     .en(Int_EN),
     .W_EN(W_EN), 
     .we(we),  
     .addr(addr), 
     .addr_col(addr_col),
-    .RAM_in(_W_DATA[15:8]), 
+    .RAM_in(_W_DATA), 
     .RAM_out(weight_int)
 );
 
 syn_Deci_MEM SDM (
     .clk(clk),
+    .rst(rst),
     .kill(kill),
     .en(Deci_EN),
     .W_EN(W_EN),
     .iAddr(iAddr),
-    .rst(rst),
     .di(_W_DATA[7:0]),
     .dout(RC_Deci)
 );
 
 RandomGenerator RG (
     .clk(clk),
+    .rst(rst),
     .randomValue(randomValue)
 )
 ;
@@ -302,13 +325,14 @@ RandomGenerator RG (
 RichClub_switch RCSW (
     .clk(clk),
     .rst(rst),
-    .is_RC(is_RC),
+    .R_EN(R_EN),
     .Int_EN(Int_EN),
     .Deci_EN(Deci_EN)
 );
 
 weight_out_controller WOC(
     .clk(clk),
+    .W_EN(W_EN),
     .rst(rst),
     .iAddr(iAddr),
     .weight_ctrl(weight_ctrl)
@@ -322,6 +346,14 @@ assign weight_deci = Deci_EN ? RC_Deci : randomValue;
 assign weight_set[15:8] = weight_int;
 assign weight_set[7:0] = weight_deci;
 
-assign weight_out = weight_ctrl ? weight_set : 16'b0000_0000_0000_0000;
+always @(posedge clk) begin
+    if (weight_ctrl) begin
+        weight_out = weight_set;
+        end
+    else begin
+        weight_out = 16'b0000_0000_0000_0000;
+    end
+    //weight_out = weight_ctrl ? weight_set : 
+    end
 
 endmodule

@@ -28,27 +28,28 @@ module soma (
 		.clk(clk),
 		.rst(rst),
 		.en(en),
-		.depolarized_V_poten(depolarized_V_poten),
+		._depolarized_V_poten(depolarized_V_poten),
 		._V_potential(V_potential)
 	);
 
 	REF_control_unit RCU (
 		.clk(clk),
-		.depolarized_V_poten(depolarized_V_poten),
+		.rst(rst),
+		._depolarized_V_poten(depolarized_V_poten),
 		._spike_interval(_spike_interval),
 		._W_DATA(W_DATA[31:16]),
-		.spike_out(spike_out),
+		._spike_out(spike_out),
 		._is_REF(is_REF);
-		.after_REF(after_REF);
+		._after_REF(after_REF);
 	);
 
 	spikeDelay_unit SDU (
 		.clk(clk),
-		._is_REF(is_REF),
+		.rst(rst),
+		.is_REF(is_REF),
 		._W_DATA(W_DATA[15:8]),
 		.skip_REF(skip_REF),
-		._is_REF(is_REF),
-		.after_REF(after_REF)
+		._is_REF(is_REF)
 	);
 
 	//spike_reg
@@ -78,7 +79,7 @@ module V_potential_reg (
 	input clk,
 	input rst,
 	input en,
-	input [15:0] depolarized_V_poten,
+	input [15:0] _depolarized_V_poten,
 	output reg [15:0] _V_potential
 );
 
@@ -89,7 +90,7 @@ module V_potential_reg (
 
 		else begin
 			if (en) begin
-				_V_potential <= depolarized_V_poten;
+				_V_potential <= _depolarized_V_poten;
 			end
 			
 			else begin
@@ -104,6 +105,7 @@ endmodule
 
 module REF_control_unit (
 	input clk,
+	input rst,
 	input [15:0] _depolarized_V_poten,
 	input [15:0] _spike_interval,
 	input [15:0] _W_DATA, //W_DATA[31:16]
@@ -117,20 +119,25 @@ module REF_control_unit (
 
 	always @(posedge clk) begin
 		if (rst) begin
+			//param init
 			_V_th <= _W_DATA[15:8]; //W_DATA[31:24]
 			_axon_delay <= _W_DATA[7:0]; //W_DATA[23:16]
+
+			//init
+			_spike_out <= 0;
+			_is_REF <= 1'b0;
+			_after_REF <= 1'b0;b
 		end
 
-		else begin
+		else begn //TODO: _is_REF에 따라 enable?
 			if (_depolarized_V_poten >= _V_th) begin
 				_spike_out <= _spike_interval + _axon_delay;
+				_after_REF <= 1'b1;
 				if(skip_REF) begin
-					_is_REF <= 1'b0;
-					_after_REF <= 1'b1;
+					_is_REF <= 1'b0;	
 				end
 				else begin
 					_is_REF <= 1'b1;
-					_after_REF <= 1'b0;
 				end
 			end
 
@@ -148,11 +155,11 @@ endmodule
 
 module spikeDelay_unit (
 	input clk,
+	input rst,
 	input is_REF,
-	input [15:8] _W_DATA,
+	input [7:0] _W_DATA,
 	output reg _skip_REF,
-	output reg _is_REF,
-	output reg _after_REF
+	output reg _is_REF
 );
 
 	reg [7:0] _spikeDelaySum;
@@ -166,19 +173,25 @@ module spikeDelay_unit (
 		end
 
 		else begin
-			if (!is_REF) begin
-				if (_W_DATA >= _refr_time) begin
-					_skip_REF <= 1'b1;
-					_spikeDelaySum <= 0;
+			if(!_skip_REF) begin
+
+			end
+
+			else begin
+				if (!is_REF) begin
+					if (_W_DATA >= _refr_time) begin
+						_skip_REF <= 1'b1;
+						_spikeDelaySum <= 0;
+					end
+					else begin
+						_skip_REF <= 1'b0;
+						_spikeDelaySum <= _W_DATA;
+					end
 				end
 				else begin
-					_skip_REF <= 1'b0;
-					_spikeDelaySum <= _W_DATA;
+					_spikeDelaySum <= _spikeDelaySum + _W_DATA;
+					_skip_REF <= _skip_REF;
 				end
-			end
-			else begin
-				_spikeDelaySum <= _spikeDelaySum + _W_DATA;
-				_skip_REF <= _skip_REF;
 			end
 		end
 	end
@@ -189,17 +202,14 @@ module spikeDelay_unit (
 		if(is_REF) begin
 			if(_spikeDelaySum >= ref_time) begin
 				_is_REF <= 1'b0;
-				_after_REF <= 1'b1;
 			end
 			else begin
 				_is_REF <= 1'b1;
-				_after_REF <= 1'b0;
 			end
 		end
 
 		else begin
 		_is_REF <= _is_REF;
-		_after_REF <= _after_REF;
 		end
 	end
 

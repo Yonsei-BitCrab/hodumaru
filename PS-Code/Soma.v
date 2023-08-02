@@ -11,129 +11,105 @@ module soma (
 );
 	
 	// Neuron Constants
-	reg[7:0] _V_th;
 	reg[7:0] tau;
-	reg[7:0] _refr_time;
-	reg[7:0] _axon_delay;
-	reg[15:0] _spike_interval;
-	reg[15:0] _V_potential;
 	reg[15:0] _next_spike_reg;
-	//reg[7:0] _spikeDelaySum;
+	reg[15:0] _spike_interval;
 
-	wire _is_REF;
+	wire skip_REF;
+	wire is_REF;
+	wire after_REF;
+	wire [15:0] V_potential;
+	wire [15:0] cal_spike;
+	wire [15:0] depolarized_V_poten;
 
-
-	// FSM STATE PARAM
-	// reg[1:0] state_reg;
-
-	// parameter DEACTIVE = 2'b00;
-	// parameter ACTIVE = 2'b01;
-	// parameter REFRATORY = 2'b11;
 	parameter _E = 2;
 
-	// // Neural Type Initializing using FSM
-	// always @(posedge clk) begin
-		
-	// 	if (rst) begin
-	// 		state_reg <= DEACTIVE;
-	// 	end
+	V_potential_reg VPreg (
+		.clk(clk),
+		.rst(rst),
+		.en(en),
+		.depolarized_V_poten(depolarized_V_poten),
+		._V_potential(V_potential)
+	);
 
-	// 	else if(kill == 1'b1) begin
-	// 		state_reg <= DEACTIVE;
-	// 	end
+	REF_control_unit RCU (
+		.clk(clk),
+		.depolarized_V_poten(depolarized_V_poten),
+		._spike_interval(_spike_interval),
+		._W_DATA(W_DATA[31:16]),
+		.spike_out(spike_out),
+		._is_REF(is_REF);
+		.after_REF(after_REF);
+	);
 
-	// 	else begin
-	// 		case (state_reg)
-	// 			DEACTIVE:
-	// 				if(en) begin
-	// 					state_reg <= ACTIVE;
-	// 				end
-
-	// 				else begin
-	// 					state_reg <= state_reg;
-	// 				end
-				
-	// 			ACTIVE:
-	// 				if(!en) begin
-	// 					state_reg <= DEACTIVE;
-	// 				end
-
-	// 				else begin
-	// 					if (_is_REF == 1'b1) begin
-	// 						state_reg <= REFRATORY;
-	// 					end
-	// 					else begin
-	// 						state_reg <= state_reg;
-	// 					end    
-	// 				end
-				
-	// 			REFRATORY:
-	// 				if (_is_REF == 1'b0) begin
-	// 					state_reg <= ACTIVE;
-	// 				end
-	// 				else begin
-	// 					state_reg <= state_reg;
-	// 				end
-					
-	// 			default:
-	// 				state_reg <= state_reg; 
-	// 		endcase
-	// 	end
-	// end
+	spikeDelay_unit SDU (
+		.clk(clk),
+		._is_REF(is_REF),
+		._W_DATA(W_DATA[15:8]),
+		.skip_REF(skip_REF),
+		._is_REF(is_REF),
+		.after_REF(after_REF)
+	);
 
 	//spike_reg
 	always @(posedge clk) begin
-		_next_spike_reg <= W_DATA[15:0]
-		_spike_interval <= _next_spike_reg;
+		if(rst) begin
+			tau <= W_DATA[7:0];
+			_next_spike_reg <= 0;
+			_spike_interval <= 0;
+		end
+
+		else begin
+			_next_spike_reg <= W_DATA[15:0]
+			_spike_interval <= _next_spike_reg;
+			tau <= tau;
+		end
 	end
 
 	//combinatioal logic
 	assign cal_spike = after_REF ? 0 : (1-_E**(_spike_interval/tau)); //after any one of three signals changes, this statement works
-	assign attenuated_V_poten = _V_potential * cal_spike;
-	assign depolarized_V_poten = attenuated_V_poten + weight;
+	assign depolarized_V_poten = V_potential * cal_spike + weight;
 
-	// Neuron reg dynamics
+endmodule
+
+////////////////////////////////////////////////////////////////////////////////
+
+module V_potential_reg (
+	input clk,
+	input rst,
+	input en,
+	input [15:0] depolarized_V_poten,
+	output reg [15:0] _V_potential
+);
+
 	always @(posedge clk) begin 
 		if (rst) begin
-			_V_th <= W_DATA[31:24];
-			tau <= W_DATA[23:16];
-			_refr_time <= W_DATA[15:8];
-			_axon_delay <= W_DATA[7:0];
-			
 			_V_potential <= 0;
-			_spikeDelaySum <= 0;
 		end
 
 		else begin
-
-			if (state_reg == ACTIVE) begin
+			if (en) begin
 				_V_potential <= depolarized_V_poten;
 			end
 			
 			else begin
-				_V_th <= _V_th;
-				tau <= tau;
-				_refr_time <= _refr_time;
-				_axon_delay <= _axon_delay;
 				_V_potential <= _V_potential;
-				_spikeDelaySum <= _spikeDelaySum;
 			end
 		end
 	end
 
 endmodule
 
-
 /////////////////////////////////////////////////////////////////////////////////
 
-module isREF_controller (
+module REF_control_unit (
 	input clk,
-	input [15:0] depolarized_V_poten,
+	input [15:0] _depolarized_V_poten,
 	input [15:0] _spike_interval,
-	input [31:16] _W_DATA,
-	output reg [15:0] spike_out,
+	input [15:0] _W_DATA, //W_DATA[31:16]
+	output reg [15:0] _spike_out,
 	output reg _is_REF;
-	output reg after_REF;
+	output reg _after_REF;
 );
 
 	reg [7:0] _V_th;
@@ -141,42 +117,42 @@ module isREF_controller (
 
 	always @(posedge clk) begin
 		if (rst) begin
-			_V_th <= _W_DATA[31:24];
-			_axon_delay <= _W_DATA[23:16];
-			_
+			_V_th <= _W_DATA[15:8]; //W_DATA[31:24]
+			_axon_delay <= _W_DATA[7:0]; //W_DATA[23:16]
 		end
 
 		else begin
-			if (depolarized_V_poten >= _V_th) begin
-				spike_out <= _spike_interval + _axon_delay;
+			if (_depolarized_V_poten >= _V_th) begin
+				_spike_out <= _spike_interval + _axon_delay;
 				if(skip_REF) begin
 					_is_REF <= 1'b0;
-					after_REF <= 1'b1;
+					_after_REF <= 1'b1;
 				end
 				else begin
 					_is_REF <= 1'b1;
-					after_REF <= 1'b0;
+					_after_REF <= 1'b0;
 				end
 			end
 
 			else begin
-				spike_out <= 0;
+				_spike_out <= 0;
 				_is_REF <= 1'b0;
-				after_REF <= 1'b0;
+				_after_REF <= 1'b0;
 			end
 		end
 	end
 
 endmodule
 
+///////////////////////////////////////////////////////////////////////////////////
 
-module spikeDelayUnit (
+module spikeDelay_unit (
 	input clk,
-	input _is_REF,
+	input is_REF,
 	input [15:8] _W_DATA,
-	output reg skip_REF,
+	output reg _skip_REF,
 	output reg _is_REF,
-	output reg after_REF
+	output reg _after_REF
 );
 
 	reg [7:0] _spikeDelaySum;
@@ -190,19 +166,19 @@ module spikeDelayUnit (
 		end
 
 		else begin
-			if (!_is_REF) begin
+			if (!is_REF) begin
 				if (_W_DATA >= _refr_time) begin
-					skip_REF <= 1'b1;
+					_skip_REF <= 1'b1;
 					_spikeDelaySum <= 0;
 				end
 				else begin
-					skip_REF <= 1'b0;
+					_skip_REF <= 1'b0;
 					_spikeDelaySum <= _W_DATA;
 				end
 			end
 			else begin
 				_spikeDelaySum <= _spikeDelaySum + _W_DATA;
-				skip_REF <= skip_REF;
+				_skip_REF <= _skip_REF;
 			end
 		end
 	end
@@ -210,20 +186,20 @@ module spikeDelayUnit (
 
 
 	always @(_spikeDelaySum) begin
-		if(_is_REF) begin
+		if(is_REF) begin
 			if(_spikeDelaySum >= ref_time) begin
 				_is_REF <= 1'b0;
-				after_REF <= 1'b1;
+				_after_REF <= 1'b1;
 			end
 			else begin
 				_is_REF <= 1'b1;
-				after_REF <= 1'b0;
+				_after_REF <= 1'b0;
 			end
 		end
 
 		else begin
 		_is_REF <= _is_REF;
-		after_REF <= after_REF;
+		_after_REF <= _after_REF;
 		end
 	end
 
